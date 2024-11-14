@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'side_bar.dart'; // Sidebar import
+import 'widgets/sidebar.dart'; // Sidebar import
 
 class ToDoPage extends StatefulWidget {
   @override
@@ -7,21 +7,13 @@ class ToDoPage extends StatefulWidget {
 }
 
 class _ToDoPageState extends State<ToDoPage> {
-  bool isSidebarOpen = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [
-          Sidebar(  // Sidebar widget 사용
-            isSidebarOpen: isSidebarOpen,
-            onSidebarToggle: () {
-              setState(() {
-                isSidebarOpen = !isSidebarOpen;
-              });
-            },
-          ),
+          Sidebar(), // Sidebar widget 사용),
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16.0),

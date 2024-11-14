@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'to_do.dart';
+import 'package:new_flutter/widgets/sidebar.dart';
 
 void main() {
   runApp(MyApp());
@@ -24,77 +24,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool isSidebarOpen = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            width: isSidebarOpen ? 200 : 70,
-            color: Color(0xFFF5F5F3),
-            child: Column(
-              children: [
-                SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: Icon(isSidebarOpen
-                        ? Icons.chevron_left
-                        : Icons.chevron_right),
-                    onPressed: () {
-                      setState(() {
-                        isSidebarOpen = !isSidebarOpen;
-                      });
-                    },
-                  ),
-                ),
-                _buildSidebarItem(
-                  icon: Icons.home_outlined,
-                  label: '홈',
-                  isActive: true,
-                ),
-                _buildSidebarItem(
-                  icon: Icons.search,
-                  label: '검색',
-                ),
-                _buildSidebarItem(
-                  icon: Icons.calendar_today,
-                  label: '달력',
-                ),
-                _buildSidebarItem(
-                  icon: Icons.checklist,
-                  label: '성과 관리 편람',
-                  onTap: () {
-                    // 성과 관리 편람을 클릭했을 때 ToDoPage로 이동
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ToDoPage()),
-                    );
-                  },
-                ),
-                _buildSidebarItem(
-                  icon: Icons.language,
-                  label: '대외 웹사이트',
-                ),
-                _buildSidebarItem(
-                  icon: Icons.add,
-                  label: '새 페이지',
-                ),
-                Spacer(),
-                _buildSidebarItem(
-                  icon: Icons.delete,
-                  label: '휴지통',
-                ),
-                _buildSidebarItem(
-                  icon: Icons.settings,
-                  label: '설정',
-                ),
-              ],
-            ),
-          ),
+          Sidebar(),
           // Main Content
           Expanded(
             child: Container(
@@ -216,21 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSidebarItem({
-    required IconData icon,
-    required String label,
-    bool isActive = false,
-    Color textColor = Colors.black,
-    VoidCallback? onTap, // 수정된 부분
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Color(0xFF91918E)),
-      title: isSidebarOpen ? Text(label) : null,
-      tileColor: isActive ? Colors.white : null,
-      onTap: onTap,
     );
   }
 
