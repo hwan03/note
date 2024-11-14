@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'to_do.dart';
 
 void main() {
   runApp(MyApp());
@@ -66,6 +67,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildSidebarItem(
                   icon: Icons.checklist,
                   label: '성과 관리 편람',
+                  onTap: () {
+                    // 성과 관리 편람을 클릭했을 때 ToDoPage로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ToDoPage()),
+                    );
+                  },
                 ),
                 _buildSidebarItem(
                   icon: Icons.language,
@@ -216,12 +224,13 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     bool isActive = false,
     Color textColor = Colors.black,
+    VoidCallback? onTap, // 수정된 부분
   }) {
     return ListTile(
       leading: Icon(icon, color: Color(0xFF91918E)),
       title: isSidebarOpen ? Text(label) : null,
       tileColor: isActive ? Colors.white : null,
-      onTap: () {},
+      onTap: onTap,
     );
   }
 
