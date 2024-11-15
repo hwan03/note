@@ -61,6 +61,7 @@ class _ToDoPageState extends State<ToDoPage> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16.0),
+              color: Colors.white, // 전체 배경색 흰색으로 설정
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -84,14 +85,15 @@ class _ToDoPageState extends State<ToDoPage> {
                           margin: EdgeInsets.only(bottom: 16),
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(10),
+                            // color: Colors.grey[200],
+                            border: Border.all(color: Color(0xFFF2F1EE)),
+                            borderRadius: BorderRadius.circular(15),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                flex: 3,
+                                flex: 4,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -125,7 +127,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                 ),
                               ),
                               Expanded(
-                                flex: 1,
+                                flex: 2,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -138,16 +140,38 @@ class _ToDoPageState extends State<ToDoPage> {
                                       ),
                                     ),
                                     SizedBox(height: 10),
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: Colors.grey[300],
-                                      color: Colors.blue,
+                                    Stack(
+                                      children: [
+                                        Container(
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            borderRadius:
+                                            BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        FractionallySizedBox(
+                                          widthFactor: progress,
+                                          child: Container(
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: progress > 0.7
+                                                  ? Colors.green
+                                                  : progress > 0.3
+                                                  ? Colors.orange
+                                                  : Colors.red,
+                                              borderRadius:
+                                              BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(height: 10),
+                                    SizedBox(height: 8),
                                     Text(
                                       '${(progress * 100).toStringAsFixed(0)}%',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
