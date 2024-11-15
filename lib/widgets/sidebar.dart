@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
-import 'to_do.dart';  // ToDoPage import
 
-class Sidebar extends StatelessWidget {
-  final bool isSidebarOpen;
-  final Function onSidebarToggle;
+import '../to_do.dart';
 
-  Sidebar({required this.isSidebarOpen, required this.onSidebarToggle});
+class Sidebar extends StatefulWidget {
+  @override
+  _SidebarState createState() => _SidebarState();
+}
 
+class _SidebarState extends State<Sidebar> {
+  bool isSidebarOpen = true;
+
+  void _toggleSidebar() {
+    setState(() {
+      isSidebarOpen = !isSidebarOpen;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
@@ -21,7 +29,7 @@ class Sidebar extends StatelessWidget {
             child: IconButton(
               icon: Icon(isSidebarOpen ? Icons.chevron_left : Icons.chevron_right),
               onPressed: () {
-                onSidebarToggle();
+                _toggleSidebar();
               },
             ),
           ),
