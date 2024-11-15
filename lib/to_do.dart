@@ -20,10 +20,10 @@ class _ToDoPageState extends State<ToDoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppBar(
-                    title: Text('성과 관리 편람'),
-                    backgroundColor: Colors.blue,
-                  ),
+                  Text('성과 관리 편람',
+                      style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600])),
                   SizedBox(height: 10),
                   Text(
                     '할 일 목록',
