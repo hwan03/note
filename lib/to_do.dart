@@ -10,25 +10,47 @@ class _ToDoPageState extends State<ToDoPage> {
   final List<Map<String, dynamic>> sections = [
     {
       'title': '사이버 교육수강',
-      'items': ['청렴·윤리', '인권(갑질)', '노무역량 강화', '개인정보보호']
+      'items': [
+        {'label': '청렴·윤리', 'checked': false},
+        {'label': '인권(갑질)', 'checked': false},
+        {'label': '노무역량 강화', 'checked': false},
+        {'label': '개인정보보호', 'checked': false},
+      ]
     },
     {
       'title': '삶의 질 제고 노력',
-      'items': ['휴가(저축+연차) 50%이상 사용', '보상휴가(전체) 70%이상 사용', '보상휴가(금년도 발생) 100%이상 사용', '유연근무 9주 이상 사용']
+      'items': [
+        {'label': '휴가(저축+연차) 50%이상 사용', 'checked': false},
+        {'label': '보상휴가(전체) 70%이상 사용', 'checked': false},
+        {'label': '보상휴가(금년도 발생) 100%이상 사용', 'checked': false},
+        {'label': '유연근무 9주 이상 사용', 'checked': false},
+      ]
     },
     {
       'title': '사회공헌 노력',
-      'items': ['봉사활동 4시간 이상']
+      'items': [
+        {'label': '봉사활동 4시간 이상', 'checked': false},
+      ]
     },
     {
       'title': 'PC보안 강화',
-      'items': ['사이버보안진단의 날 [내PC 지킴이] 종합점수 100점 유지']
+      'items': [
+        {'label': '사이버보안진단의 날 [내PC 지킴이] 종합점수 100점 유지', 'checked': false},
+      ]
     },
     {
       'title': '건강관리 노력',
-      'items': ['건강검진 수검']
+      'items': [
+        {'label': '건강검진 수검', 'checked': false},
+      ]
     },
   ];
+
+  double _calculateProgress(List<Map<String, dynamic>> items) {
+    final total = items.length;
+    final checkedCount = items.where((item) => item['checked'] == true).length;
+    return total == 0 ? 0 : checkedCount / total;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +79,7 @@ class _ToDoPageState extends State<ToDoPage> {
                       itemCount: sections.length,
                       itemBuilder: (context, index) {
                         final section = sections[index];
+                        final progress = _calculateProgress(section['items']);
                         return Container(
                           margin: EdgeInsets.only(bottom: 16),
                           padding: EdgeInsets.all(16),
@@ -64,25 +87,71 @@ class _ToDoPageState extends State<ToDoPage> {
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                section['title'],
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                flex: 3,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      section['title'],
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    ...List.generate(
+                                      section['items'].length,
+                                          (itemIndex) {
+                                        final item =
+                                        section['items'][itemIndex];
+                                        return CheckboxListTile(
+                                          title: Text(item['label']),
+                                          value: item['checked'],
+                                          onChanged: (value) {
+                                            setState(() {
+                                              item['checked'] = value;
+                                            });
+                                          },
+                                          controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
-                              SizedBox(height: 8),
-                              ...List.generate(
-                                section['items'].length,
-                                    (itemIndex) => CheckboxListTile(
-                                  title: Text(section['items'][itemIndex]),
-                                  value: false,
-                                  onChanged: (value) {},
-                                  controlAffinity:
-                                  ListTileControlAffinity.leading,
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '진행률',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: Colors.grey[300],
+                                      color: Colors.blue,
+                                    ),
+                                    SizedBox(height: 10),
+                                    Text(
+                                      '${(progress * 100).toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
