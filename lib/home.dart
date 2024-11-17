@@ -24,7 +24,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,9 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('최근 페이지',
-                      style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600])),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600])),
                   SizedBox(height: 10),
                   Expanded(
                     flex: 2,
@@ -75,17 +72,23 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Color(0xFFF2F1EE),
                                 ),
                                 alignment: Alignment.bottomLeft,
-                                child: Icon(Icons.description_outlined, size: 40, color: Color(0xFF91918E)),
+                                child: Icon(Icons.description_outlined,
+                                    size: 40, color: Color(0xFF91918E)),
                               ),
-                              Padding(padding: EdgeInsets.all(15),
+                              Padding(
+                                padding: EdgeInsets.all(15),
                                 child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text('페이지${index + 1}', style: TextStyle(fontWeight: FontWeight.bold),),
+                                      Text(
+                                        '페이지${index + 1}',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold),
+                                      ),
                                       Text('2024.01.15'),
-                                    ]
-                                )
-                                ,)
+                                    ]),
+                              )
                             ],
                           ),
                         );
@@ -127,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         flex: 3,
                                         child: Column(
                                           crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text('○○ 미팅'),
                                             Text('9AM',
@@ -155,34 +158,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildLabeledBox({required String label, required Widget child}) {
-    return Container(
-      child: Stack(
-        children: [
-          Container(
-            margin: EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Color(0xFFF2F1EE)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.only(top: 24),
-            child: child,
+  Widget _buildLabeledBox({required String label, required Widget child,}) {
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Color(0xFFF2F1EE)),
+            borderRadius: BorderRadius.circular(8),
           ),
-          Positioned(
-            left: 16,
-            top: 0,
-            child: Container(
-              color: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
+          padding: EdgeInsets.only(top: 24),
+          child: child,
+        ),
+        Positioned(
+          left: 16,
+          top: 0,
+          child: Container(
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
