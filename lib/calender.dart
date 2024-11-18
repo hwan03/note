@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,6 +15,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tablet Calendar & Schedule',
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      locale: const Locale('ko'),
+      // 한국어로 고정
+      supportedLocales: const [
+        Locale('en', ''), // English, no country code
+        Locale('ko', ''), // Korean, no country code
+      ],
       theme: ThemeData(
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
@@ -25,6 +36,7 @@ class MyApp extends StatelessWidget {
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
+
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
@@ -36,7 +48,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final TextEditingController _detailsController = TextEditingController();
   DateTime _selectedStartDateTime = DateTime.now();
   DateTime _selectedEndDateTime = DateTime.now();
-
 
   final Map<DateTime, List<Map<String, dynamic>>> _events = {
     DateTime(2024, 11, 11): [
@@ -54,7 +65,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   ];
   final List<bool> _selectedTags = [false, false, false];
 
-
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
     return _events[day] ?? [];
   }
@@ -62,25 +72,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _showCustomDateTimePicker(
       BuildContext context, bool isStart) async {
     DateTime tempDate = isStart ? _selectedStartDateTime : _selectedEndDateTime;
-
     showModalBottomSheet(
       context: context,
+      backgroundColor: Color(0xFFF5F5F3),
       builder: (BuildContext builder) {
         return SizedBox(
           height: 250,
-          child: CupertinoDatePicker(
-            mode: CupertinoDatePickerMode.dateAndTime,
-            initialDateTime: tempDate,
-            use24hFormat: true,
-            onDateTimeChanged: (DateTime newDate) {
-              setState(() {
-                if (isStart) {
-                  _selectedStartDateTime = newDate;
-                } else {
-                  _selectedEndDateTime = newDate;
-                }
-              });
-            },
+          child: CupertinoTheme(
+            data: CupertinoThemeData(
+              textTheme: CupertinoTextThemeData(
+                dateTimePickerTextStyle: TextStyle(color: Colors.black),
+              ),
+            ),
+            child: CupertinoDatePicker(
+              backgroundColor: Color(0xFFF5F5F3),
+              mode: CupertinoDatePickerMode.dateAndTime,
+              initialDateTime: tempDate,
+              use24hFormat: true,
+              onDateTimeChanged: (DateTime newDate) {
+                setState(() {
+                  if (isStart) {
+                    _selectedStartDateTime = newDate;
+                  } else {
+                    _selectedEndDateTime = newDate;
+                  }
+                });
+              },
+            ),
           ),
         );
       },
@@ -111,13 +129,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // final List<bool> _selectedTags = [false, false, false];
   //
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-
         children: [
           Sidebar(),
           // Main Content
@@ -147,7 +163,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                   Text(
                                     '${_focusedDate.month}월',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.chevron_right),
@@ -163,7 +181,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                   Text(
                                     '${_focusedDate.year}년',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.chevron_right),
@@ -179,7 +199,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               firstDay: DateTime.utc(2020, 1, 1),
                               lastDay: DateTime.utc(2030, 12, 31),
                               focusedDay: _focusedDate,
-                              selectedDayPredicate: (day) => isSameDay(_selectedDate, day),
+                              selectedDayPredicate: (day) =>
+                                  isSameDay(_selectedDate, day),
                               eventLoader: (day) => _events[day] ?? [],
                               onDaySelected: (selectedDay, focusedDay) {
                                 setState(() {
@@ -191,11 +212,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 markerBuilder: (context, date, events) {
                                   if (events.isNotEmpty) {
                                     return Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: events.map((e) {
-                                        final tagIndex = _tags.indexWhere((tag) => tag['name'] == e);
+                                        final tagIndex = _tags.indexWhere(
+                                            (tag) => tag['name'] == e);
                                         return Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 2),
                                           child: _buildColorCircle(
                                               color: _tags[tagIndex]['color']),
                                         );
@@ -205,8 +229,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   return null;
                                 },
                               ),
-                                headerVisible: false,
-                                rowHeight: 100,
+                              headerVisible: false,
+                              rowHeight: 100,
                             ),
                           ),
                         ],
@@ -272,7 +296,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         });
                                       },
                                     ),
-                                    _buildColorCircle(color: _tags[index]['color']),
+                                    _buildColorCircle(
+                                        color: _tags[index]['color']),
                                     SizedBox(width: 8),
                                     Text(_tags[index]['name']),
                                   ],
@@ -314,7 +339,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildLabeledBox({required String label, required Widget child,
+  Widget _buildLabeledBox({
+    required String label,
+    required Widget child,
   }) {
     return Stack(
       children: [
@@ -340,9 +367,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Text(
               label,
-              style: TextStyle(fontSize: 16,
+              style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color:Colors.grey[600]),
+                  color: Colors.grey[600]),
             ),
           ),
         ),
@@ -381,10 +409,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 // }
 
   Widget _buildDateTimePickerField(
-      BuildContext context, {
-        required DateTime selectedDateTime,
-        required bool isStart,
-      }) {
+    BuildContext context, {
+    required DateTime selectedDateTime,
+    required bool isStart,
+  }) {
     return GestureDetector(
       onTap: () => _showCustomDateTimePicker(context, isStart),
       child: Container(
@@ -399,7 +427,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             Text(
               '${selectedDateTime.month} 월${selectedDateTime.day}일 \n'
-                  '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
+              '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
           ],
