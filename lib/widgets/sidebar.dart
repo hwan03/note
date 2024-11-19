@@ -3,6 +3,7 @@ import '../calender.dart';
 import '../home.dart';
 import '../widgets/dynamic_page.dart';
 import '../to_do.dart';
+import '../search.dart';
 
 class Sidebar extends StatefulWidget {
   final Function(String) addNewPageCallback; // 콜백 추가
@@ -137,6 +138,12 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.search,
             label: '검색',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchPage()),
+              );
+            },
           ),
           _buildSidebarItem(
             icon: Icons.calendar_today,
