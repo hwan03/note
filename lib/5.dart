@@ -53,9 +53,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildSidebarItem(icon: Icons.calendar_today, label: '달력'),
                 _buildSidebarItem(icon: Icons.check_circle, label: '성과 관리'),
                 _buildSidebarItem(icon: Icons.language, label: '대외 웹사이트'),
-                _buildSidebarItem(icon: Icons.add, label: '새 페이지'),
 
-                Divider(color: Colors.grey), // 마지막 버튼 아래 선 추가
+                // 새 페이지 버튼에 화면 이동 기능 추가
+                ListTile(
+                  leading: Icon(Icons.add),
+                  title: isSidebarOpen ? Text('새 페이지') : null,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NewPageScreen()),
+                    );
+                  },
+                ),
+                Divider(color: Colors.grey),
                 Expanded(
                   child: ListView(
                     children: [
@@ -123,7 +133,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     flex: 3,
                     child: Row(
                       children: [
-                        // 성과 관리 편람
                         Expanded(
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
@@ -221,6 +230,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// 새로운 페이지를 위한 위젯 추가
+class NewPageScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('새 페이지'),
+      ),
+      body: Center(
+        child: Text('이곳은 새 페이지입니다', style: TextStyle(fontSize: 24)),
       ),
     );
   }
