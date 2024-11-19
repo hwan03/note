@@ -53,6 +53,12 @@ class _SidebarState extends State<Sidebar> {
             icon: Icons.calendar_today,
             label: '달력',
             onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CalenderPage()),
+              );
+            },
+
               // 홈 버튼 클릭 시 캘린더 페이지로 이동
               Navigator.pushReplacement(
                 context,
