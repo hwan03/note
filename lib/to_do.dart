@@ -80,8 +80,23 @@ class _ToDoPageState extends State<ToDoPage> {
     return total == 0 ? 0 : checkedCount / total;
   }
 
+  double _calculateOverallProgress() {
+    int totalItems = 0;
+    int totalChecked = 0;
+
+    for (final section in sections) {
+      final items = section['items'] as List<Map<String, dynamic>>;
+      totalItems += items.length;
+      totalChecked += items.where((item) => item['checked'] == true).length;
+    }
+
+    return totalItems == 0 ? 0 : totalChecked / totalItems;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final overallProgress = _calculateOverallProgress(); // 전체 이행률 계산
+
     return Scaffold(
       body: Row(
         children: [
@@ -103,25 +118,166 @@ class _ToDoPageState extends State<ToDoPage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 10),
+
+                  // 전체 이행률 표시 부분
+                  Row(
+                    children: [
+                      Text(
+                        '전체 이행률: ',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Container(
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: overallProgress,
+                              child: Container(
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: overallProgress > 0.7
+                                      ? Colors.green
+                                      : overallProgress > 0.3
+                                      ? Colors.orange
+                                      : Colors.red,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: Text(
+                                  '${(overallProgress * 100).toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white, // 흰색 글씨
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // 스크롤 가능한 전체 컨텐츠
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: sections.length,
-                      itemBuilder: (context, index) {
-                        final section = sections[index];
-                        final progress = _calculateProgress(section['items']);
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 16),
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Color(0xFFF2F1EE)),
-                            borderRadius: BorderRadius.circular(15),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 이행률 요약 블록
+                          Container(
+                            margin: EdgeInsets.only(bottom: 16),
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Color(0xFFF2F1EE)),
+                              borderRadius: BorderRadius.circular(15),
+                              color: Colors.white,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '이행률 요약',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                ...sections.map((section) {
+                                  final progress = _calculateProgress(section['items']);
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            section['title'],
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Stack(
+                                            children: [
+                                              Container(
+                                                height: 20,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[300],
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              FractionallySizedBox(
+                                                widthFactor: progress,
+                                                child: Container(
+                                                  height: 20,
+                                                  decoration: BoxDecoration(
+                                                    color: progress > 0.7
+                                                        ? Colors.green
+                                                        : progress > 0.3
+                                                        ? Colors.orange
+                                                        : Colors.red,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                child: Center(
+                                                  child: Text(
+                                                    '${(progress * 100).toStringAsFixed(0)}%',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Column(
+
+                          // 체크리스트 섹션
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Color(0xFFF2F1EE)),
+                              borderRadius: BorderRadius.circular(15),
+                              color: Colors.white,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: sections.map((section) {
+                                return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
@@ -131,90 +287,29 @@ class _ToDoPageState extends State<ToDoPage> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    SizedBox(height: 8),
-                                    ...List.generate(
-                                      section['items'].length,
-                                          (itemIndex) {
-                                        final item =
-                                        section['items'][itemIndex];
-                                        return CheckboxListTile(
-                                          title: Text(item['label']),
-                                          value: item['checked'],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              item['checked'] = value;
-                                            });
-                                            _saveSections(); // 상태 저장
-                                          },
-                                          controlAffinity:
-                                          ListTileControlAffinity.leading,
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '이행률',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
                                     SizedBox(height: 10),
-                                    Stack(
-                                      children: [
-                                        Container(
-                                          height: 20,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius:
-                                            BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                        FractionallySizedBox(
-                                          widthFactor: progress,
-                                          child: Container(
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                              color: progress > 0.7
-                                                  ? Colors.green
-                                                  : progress > 0.3
-                                                  ? Colors.orange
-                                                  : Colors.red,
-                                              borderRadius:
-                                              BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned.fill(
-                                          child: Align(
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              '${(progress * 100).toStringAsFixed(0)}%',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                    ...section['items'].map<Widget>((item) {
+                                      return CheckboxListTile(
+                                        title: Text(item['label']),
+                                        value: item['checked'],
+                                        onChanged: (value) {
+                                          setState(() {
+                                            item['checked'] = value;
+                                          });
+                                          _saveSections();
+                                        },
+                                      );
+                                    }).toList(),
+                                    SizedBox(height: 10),
+                                    Divider(color: Color(0xFFF2F1EE)), // 구분선 추가
+                                    SizedBox(height: 10),
                                   ],
-                                ),
-                              ),
-                            ],
+                                );
+                              }).toList(),
+                            ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
                   ),
                 ],
