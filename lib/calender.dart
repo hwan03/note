@@ -4,13 +4,14 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-void main() {
-  runApp(MyApp());
+class CalenderPage extends StatefulWidget {
+  const CalenderPage({super.key});
+
+  @override
+  _CalenderPageState createState() => _CalenderPageState();
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
+class _CalenderPageState extends State<CalenderPage> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -266,20 +267,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             SizedBox(height: 24),
                             // 시작 날짜와 종료 날짜
-                            Row(
-                              children: [
-                                _buildDateTimePickerField(
-                                  context,
-                                  selectedDateTime: _selectedStartDateTime,
-                                  isStart: true,
-                                ),
-                                SizedBox(width: 8),
-                                _buildDateTimePickerField(
-                                  context,
-                                  selectedDateTime: _selectedEndDateTime,
-                                  isStart: false,
-                                ),
-                              ],
+                            Container(
+                              height:100,
+
+                              decoration: BoxDecoration(
+                                color: Color(0xFF91918E),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildDateTimePickerField(
+                                      context,
+                                      selectedDateTime: _selectedStartDateTime,
+                                      color: Colors.blue,
+                                      isStart: true,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: _buildDateTimePickerField(
+                                      context,
+                                      color: Color(0xFF91918E),
+                                      selectedDateTime: _selectedEndDateTime,
+                                      isStart: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             SizedBox(height: 24),
                             // 태그 리스트
@@ -407,32 +422,70 @@ class _CalendarScreenState extends State<CalendarScreen> {
 //     }
 //   }
 // }
+//
 
   Widget _buildDateTimePickerField(
     BuildContext context, {
     required DateTime selectedDateTime,
     required bool isStart,
+    required Color color,
   }) {
-    return GestureDetector(
-      onTap: () => _showCustomDateTimePicker(context, isStart),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey),
+    return Stack(
+      children: [
+        ClipPath(
+          clipper: isStart ? ArrowClipper() : null,
+          child: Container(
+              width: double.infinity, // 부모의 너비를 가득 채움
+              color: color,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, // 왼쪽 정렬
+                mainAxisAlignment: MainAxisAlignment.center, // 세로 가운데 정렬
+                children: [
+                  Text(
+                    '${selectedDateTime.month} 월 ${selectedDateTime.day} 일\n'
+                    '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                        fontSize: 20,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ],
+              )),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${selectedDateTime.month} 월${selectedDateTime.day}일 \n'
-              '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+        Positioned.fill(
+          child: ClipPath(
+            clipper: isStart ? ArrowClipper() : null,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showCustomDateTimePicker(context, isStart),
+                splashColor: Colors.white24, // 클릭 시 효과
+              ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
+}
+
+class ArrowClipper extends CustomClipper<Path> {
+
+  ArrowClipper();
+
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width - 30, 0);
+    path.lineTo(size.width, size.height / 2);
+    path.lineTo(size.width - 30, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

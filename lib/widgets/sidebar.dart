@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../calender.dart';
 import '../to_do.dart';
 
 class Sidebar extends StatefulWidget {
@@ -47,6 +48,13 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.calendar_today,
             label: '달력',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CalenderPage()),
+              );
+            },
+
           ),
           _buildSidebarItem(
             icon: Icons.checklist,
