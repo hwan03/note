@@ -160,7 +160,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Text(
-                                      '진행률',
+                                      '이행률',
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
