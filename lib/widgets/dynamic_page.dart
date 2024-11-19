@@ -526,44 +526,44 @@ class _DynamicPageState extends State<DynamicPage> {
                 ),
               ),
               body: Column(
-                  children: [
+                children: [
                   buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
                   Expanded(
-                  child : Stack(
-                  children: [
-                    Container(
-                    color: Colors.white,
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    if (showCalendar) Expanded(child: buildCalendar()),
-                    if (showTodoList) Expanded(child: buildTodoList()),
-                    Expanded(
-                      child: TextField(
-                        controller: _contentController,
-                        maxLines: null,
-                        style: TextStyle(fontSize: textSize),
-                        decoration: InputDecoration(
-                          hintText: "내용을 입력하세요",
-                          border: InputBorder.none,
-                        ),
-                      ),
-                    ),
+                    child : Stack(
+                      children: [
+                        Container(
+                          color: Colors.white,
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (showCalendar) Expanded(child: buildCalendar()),
+                              if (showTodoList) Expanded(child: buildTodoList()),
+                              Expanded(
+                                child: TextField(
+                                  controller: _contentController,
+                                  maxLines: null,
+                                  style: TextStyle(fontSize: textSize),
+                                  decoration: InputDecoration(
+                                    hintText: "내용을 입력하세요",
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
 
-                    if (isKeyboardVisible) buildCustomKeyboard(),
-                  ],
-                ),
+                              if (isKeyboardVisible) buildCustomKeyboard(),
+                            ],
+                          ),
+                        ),
+                        buildNavigationBar(),
+                      ],
+                    ),
                   ),
-                buildNavigationBar(),
-              ],
+                ],
               ),
             ),
+          ),
         ],
       ),
-    ),
-    ),
-    ],
-    ),
     );
   }
 }

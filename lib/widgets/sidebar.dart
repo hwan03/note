@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../to_do.dart';
-
-
+import '../calender.dart';
+import '../home.dart';
 import '../widgets/dynamic_page.dart';
+import '../to_do.dart';
+import '../search.dart';
 
 class Sidebar extends StatefulWidget {
   final Function(String) addNewPageCallback; // 콜백 추가
@@ -127,17 +128,31 @@ class _SidebarState extends State<Sidebar> {
             icon: Icons.home_outlined,
             label: '홈',
             onTap: () {
-              // 홈으로 이동 (이 부분은 이미 구현이 되어 있어 변경 없음)
+              // 홈 버튼 클릭 시 HomeScreen으로 이동
+              Navigator.popUntil(context, (route) => route.isFirst); // 스택을 초기화하고 첫 화면으로 돌아감);
             },
           ),
           _buildSidebarItem(
             icon: Icons.search,
             label: '검색',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchPage()),
+              );
+            },
           ),
           _buildSidebarItem(
             icon: Icons.calendar_today,
             label: '달력',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CalenderPage()),
+              );
+            },
           ),
+          // 홈 버튼 클릭 시 캘린더 페이지로 이동
           _buildSidebarItem(
             icon: Icons.checklist,
             label: '성과 관리 편람',
