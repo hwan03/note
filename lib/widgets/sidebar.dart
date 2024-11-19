@@ -58,14 +58,8 @@ class _SidebarState extends State<Sidebar> {
                 MaterialPageRoute(builder: (context) => CalenderPage()),
               );
             },
-
-              // 홈 버튼 클릭 시 캘린더 페이지로 이동
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => CalendarScreen()),
-              );
-            },
           ),
+              // 홈 버튼 클릭 시 캘린더 페이지로 이동
           _buildSidebarItem(
             icon: Icons.checklist,
             label: '성과 관리 편람',
