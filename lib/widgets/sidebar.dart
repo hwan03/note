@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
 import '../calender.dart';
+import '../home.dart';
 import '../to_do.dart';
 
 class Sidebar extends StatefulWidget {
@@ -38,7 +38,11 @@ class _SidebarState extends State<Sidebar> {
             icon: Icons.home_outlined,
             label: '홈',
             onTap: () {
-              // 홈으로 이동 (이 부분은 이미 구현이 되어 있어 변경 없음)
+              // 홈 버튼 클릭 시 HomeScreen으로 이동
+              Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
             },
           ),
           _buildSidebarItem(
@@ -55,6 +59,12 @@ class _SidebarState extends State<Sidebar> {
               );
             },
 
+              // 홈 버튼 클릭 시 캘린더 페이지로 이동
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => CalendarScreen()),
+              );
+            },
           ),
           _buildSidebarItem(
             icon: Icons.checklist,
