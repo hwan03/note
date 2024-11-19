@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/cupertino.dart';
@@ -49,7 +50,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final TextEditingController _detailsController = TextEditingController();
   DateTime _selectedStartDateTime = DateTime.now();
   DateTime _selectedEndDateTime = DateTime.now();
-
+  int _selectedTagIndex = 0; // 현재 선택된 태그 인덱스
   final Map<DateTime, List<Map<String, dynamic>>> _events = {
     DateTime(2024, 11, 11): [
       {"name": "태그 1", "color": Color(0xFFFFC1C1)},
@@ -298,23 +299,53 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             SizedBox(height: 24),
                             // 태그 리스트
-                            Text('일정 태그'),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "일정 태그",
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.add_outlined, color:Colors.black),
+                                  onPressed: _tags.length < 5 ? _addTag : null,
+                                ),
+                              ],
+                            ),
                             Column(
                               children: List.generate(_tags.length, (index) {
                                 return Row(
                                   children: [
-                                    Checkbox(
-                                      value: _selectedTags[index],
-                                      onChanged: (value) {
+                                    Radio<int>(
+                                      value: index, // 현재 라디오 버튼의 값
+                                      groupValue: _selectedTagIndex, // 선택된 값
+                                      onChanged: (int? value) {
                                         setState(() {
-                                          _selectedTags[index] = value ?? false;
+                                          _selectedTagIndex = value!;
                                         });
                                       },
                                     ),
-                                    _buildColorCircle(
-                                        color: _tags[index]['color']),
+                                    GestureDetector(
+                                      onDoubleTap: () => _changeTagColor(index),
+                                      child: CircleAvatar(
+                                          backgroundColor: _tags[index]['color'],
+                                          radius: 8
+                                      ),
+                                    ),
                                     SizedBox(width: 8),
-                                    Text(_tags[index]['name']),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onDoubleTap: () => _editTagName(context, index),
+                                        child: Text(
+                                          _tags[index]['name'],
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.close, color: Colors.grey),
+                                      onPressed: _tags.length > 1 ? () => _deleteTag(index) : null,
+                                    ),
                                   ],
                                 );
                               }),
@@ -403,26 +434,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+  // 텍스트 필드 편집 컨트롤러
+  final TextEditingController _editingController = TextEditingController();
 
-//   Future<void> _selectDate(BuildContext context, bool isStart) async {
-//     DateTime? pickedDate = await showDatePicker(
-//       context: context,
-//       initialDate: isStart ? _startDate : _endDate,
-//       firstDate: DateTime(2000),
-//       lastDate: DateTime(2100),
-//     );
-//     if (pickedDate != null) {
-//       setState(() {
-//         if (isStart) {
-//           _startDate = pickedDate;
-//         } else {
-//           _endDate = pickedDate;
-//         }
-//       });
-//     }
-//   }
-// }
-//
+  @override
+  void dispose() {
+    _editingController.dispose();
+    super.dispose();
+  }
+
+
 
   Widget _buildDateTimePickerField(
     BuildContext context, {
@@ -468,7 +489,85 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
   }
+
+  void _editTagName(BuildContext context, int index) {
+    _editingController.text = _tags[index]['name']; // 기존 태그 이름을 텍스트 필드에 설정
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('태그 이름 수정'),
+          content: TextField(
+            controller: _editingController,
+            decoration: InputDecoration(hintText: '새로운 태그 이름'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _tags[index]['name'] = _editingController.text;
+                });
+                Navigator.of(context).pop();
+              },
+              child: Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _changeTagColor(int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("태그 색상 변경"),
+          content: SingleChildScrollView(
+            child: BlockPicker(
+              pickerColor: _tags[index]['color'],
+              onColorChanged: (color) {
+                setState(() {
+                  _tags[index]['color'] = color;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  void _addTag() {
+    setState(() {
+      int newIndex = _tags.length + 1;
+      _tags.add({
+        "name": "태그 $newIndex",
+        "color": Colors.grey, // 기본 색상
+      });
+    });
+  }
+
+  void _deleteTag(int index) {
+    setState(() {
+      _tags.removeAt(index);
+      if (_selectedTagIndex == index) {
+        _selectedTagIndex = 0;
+      } else if (_selectedTagIndex > index) {
+        _selectedTagIndex--;
+      }
+    });
+  }
 }
+
 
 class ArrowClipper extends CustomClipper<Path> {
 
@@ -478,9 +577,9 @@ class ArrowClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     Path path = Path();
     path.moveTo(0, 0);
-    path.lineTo(size.width - 30, 0);
-    path.lineTo(size.width, size.height / 2);
-    path.lineTo(size.width - 30, size.height);
+    path.lineTo(size.width - 20, 0);
+    path.lineTo(size.width , size.height / 2);
+    path.lineTo(size.width - 20, size.height);
     path.lineTo(0, size.height);
     path.close();
     return path;
@@ -489,3 +588,4 @@ class ArrowClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
+
