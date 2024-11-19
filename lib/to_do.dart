@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert'; // JSON 변환용
 import 'widgets/sidebar.dart'; // Sidebar import
 
 class ToDoPage extends StatefulWidget {
@@ -7,7 +9,7 @@ class ToDoPage extends StatefulWidget {
 }
 
 class _ToDoPageState extends State<ToDoPage> {
-  final List<Map<String, dynamic>> sections = [
+  List<Map<String, dynamic>> sections = [
     {
       'title': '사이버 교육수강',
       'items': [
@@ -46,6 +48,32 @@ class _ToDoPageState extends State<ToDoPage> {
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSections(); // 상태 로드
+  }
+
+  Future<void> _loadSections() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedSections = prefs.getString('sections');
+    if (savedSections != null) {
+      setState(() {
+        sections = List<Map<String, dynamic>>.from(
+          json.decode(savedSections).map((section) => {
+            'title': section['title'],
+            'items': List<Map<String, dynamic>>.from(section['items'])
+          }),
+        );
+      });
+    }
+  }
+
+  Future<void> _saveSections() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('sections', json.encode(sections));
+  }
+
   double _calculateProgress(List<Map<String, dynamic>> items) {
     final total = items.length;
     final checkedCount = items.where((item) => item['checked'] == true).length;
@@ -61,7 +89,7 @@ class _ToDoPageState extends State<ToDoPage> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16.0),
-              color: Colors.white, // 전체 배경색 흰색으로 설정
+              color: Colors.white,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -85,7 +113,6 @@ class _ToDoPageState extends State<ToDoPage> {
                           margin: EdgeInsets.only(bottom: 16),
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            // color: Colors.grey[200],
                             border: Border.all(color: Color(0xFFF2F1EE)),
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -117,6 +144,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                             setState(() {
                                               item['checked'] = value;
                                             });
+                                            _saveSections(); // 상태 저장
                                           },
                                           controlAffinity:
                                           ListTileControlAffinity.leading,
