@@ -193,15 +193,20 @@ class _ToDoPageState extends State<ToDoPage> {
                                             ),
                                           ),
                                         ),
+                                        Positioned.fill(
+                                          child: Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '${(progress * 100).toStringAsFixed(0)}%',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ],
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      '${(progress * 100).toStringAsFixed(0)}%',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
                                     ),
                                   ],
                                 ),
