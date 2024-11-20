@@ -134,7 +134,7 @@ class _ToDoPageState extends State<ToDoPage> {
                               height: 20,
                               decoration: BoxDecoration(
                                 color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(5),
                               ),
                             ),
                             FractionallySizedBox(
@@ -147,7 +147,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                       : overallProgress > 0.3
                                       ? Colors.orange
                                       : Colors.red,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(5),
                                 ),
                               ),
                             ),
@@ -222,7 +222,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                                 height: 20,
                                                 decoration: BoxDecoration(
                                                   color: Colors.grey[300],
-                                                  borderRadius: BorderRadius.circular(10),
+                                                  borderRadius: BorderRadius.circular(5),
                                                 ),
                                               ),
                                               FractionallySizedBox(
@@ -235,7 +235,7 @@ class _ToDoPageState extends State<ToDoPage> {
                                                         : progress > 0.3
                                                         ? Colors.orange
                                                         : Colors.red,
-                                                    borderRadius: BorderRadius.circular(10),
+                                                    borderRadius: BorderRadius.circular(5),
                                                   ),
                                                 ),
                                               ),
