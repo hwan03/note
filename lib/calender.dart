@@ -215,10 +215,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   if (events.isNotEmpty) {
                                     return Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                      MainAxisAlignment.center,
                                       children: events.map((e) {
                                         final tagIndex = _tags.indexWhere(
-                                            (tag) => tag['name'] == e);
+                                                (tag) => tag['name'] == e);
                                         return Padding(
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 2),
@@ -446,11 +446,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
 
   Widget _buildDateTimePickerField(
-    BuildContext context, {
-    required DateTime selectedDateTime,
-    required bool isStart,
-    required Color color,
-  }) {
+      BuildContext context, {
+        required DateTime selectedDateTime,
+        required bool isStart,
+        required Color color,
+      }) {
     return Stack(
       children: [
         ClipPath(
@@ -465,7 +465,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   Text(
                     '${selectedDateTime.month} 월 ${selectedDateTime.day} 일\n'
-                    '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
+                        '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(
                         fontSize: 20,
                         color: Colors.white,
@@ -588,4 +588,3 @@ class ArrowClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
-
