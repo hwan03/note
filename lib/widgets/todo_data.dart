@@ -7,7 +7,6 @@ class ToDoData {
       'title': '사이버 교육수강',
       'items': [
         {'label': '청렴·윤리', 'checked': false},
-
         {'label': '인권(갑질)', 'checked': false},
         {'label': '노무역량 강화', 'checked': false},
         {'label': '개인정보보호', 'checked': false},

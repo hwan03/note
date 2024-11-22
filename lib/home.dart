@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
-import 'package:new_flutter/to_do.dart';
+import 'widgets/todo_data.dart';
+import 'widgets/summary_chart.dart';
 
 void main() {
   runApp(MyApp());
@@ -26,6 +27,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
+
   List<String> recentPages = []; // 최근 페이지 목록
   Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
   int pageCounter = 1; // 페이지 숫자 관리
@@ -182,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
                             child: Center(
-                              child: Text('성과 내용 없음'),
+                              child: SummaryChart(toDoData: toDoData),
                             ),
                           ),
                         ),
