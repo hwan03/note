@@ -72,5 +72,4 @@ class SummaryChart extends StatelessWidget {
       }).toList(),
     );
   }
-
 }
