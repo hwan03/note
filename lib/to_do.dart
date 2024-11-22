@@ -122,14 +122,6 @@ class _ToDoPageState extends State<ToDoPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  '이행률 요약',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
                                 SummaryChart(toDoData: toDoData)
                               ],
                             ),

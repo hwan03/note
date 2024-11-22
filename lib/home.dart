@@ -189,8 +189,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
-                            child: Center(
-                              child: SummaryChart(toDoData: toDoData),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 16), // 추가된 부분
+                              padding: EdgeInsets.all(16), // 추가된 부분
+                              child: Center(
+                                child: SummaryChart(toDoData: toDoData),
+                              ),
                             ),
                           ),
                         ),
