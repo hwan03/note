@@ -235,33 +235,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLabeledBox({required String label, required Widget child}) {
-    return Container(
-      child: Stack(
-        children: [
-          Container(
-            margin: EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Color(0xFFF2F1EE)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.only(top: 24),
-            child: child,
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Color(0xFFF2F1EE)),
+            borderRadius: BorderRadius.circular(8),
           ),
-          Positioned(
-            left: 16,
-            top: 0,
-            child: Container(
-              color: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
+          padding: EdgeInsets.only(top: 24),
+          child: child,
+        ),
+        Positioned(
+          left: 16,
+          top: 0,
+          child: Container(
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

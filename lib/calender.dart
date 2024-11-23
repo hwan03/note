@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,6 +47,14 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  bool _isCreatingEvent = false; // true: 일정 작성 화면, false: 예정된 일정 화면
+
+  void _toggleScreen() {
+    setState(() {
+      _isCreatingEvent = !_isCreatingEvent;
+    });
+  }
+
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
   final TextEditingController _titleController = TextEditingController();
@@ -84,17 +93,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     {"name": "업무", "color": Color(0xFFFFC1C1)},
   ];
 
-  // List<Map<String, dynamic>> _getEventsForDay(DateTime date) {
-  //   if (_dateIndex[date] != null) {
-  //     return _dateIndex[date]!.map((index) => _events[index]).toList();
-  //   }
-  //   return [];
-  // }
-
-  // List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
-  //   return _events[day] ?? [];
-  // }
-
   @override
   @override
   void initState() {
@@ -128,10 +126,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mode: CupertinoDatePickerMode.dateAndTime,
               initialDateTime: tempDate,
               use24hFormat: true,
+              minimumDate: isStart ? null : _selectedStartDateTime,
+              // endTime 제한
               onDateTimeChanged: (DateTime newDate) {
                 setState(() {
                   if (isStart) {
                     _selectedStartDateTime = newDate;
+
+                    // endTime도 자동으로 startTime 이후로 설정
+                    if (_selectedEndDateTime.isBefore(newDate)) {
+                      _selectedEndDateTime =
+                          newDate.add(const Duration(hours: 1));
+                    }
                   } else {
                     _selectedEndDateTime = newDate;
                   }
@@ -163,10 +169,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     });
   }
-
-  //
-  // final List<bool> _selectedTags = [false, false, false];
-  //
 
   @override
   Widget build(BuildContext context) {
@@ -247,21 +249,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   // print('Events for $selectedDay: ${_getEventsForDay(selectedDay)}');
                                 });
                               },
+                              onPageChanged: (focusedDay) {
+                                // 페이지가 변경되었을 때 호출
+                                setState(() {
+                                  _focusedDate = focusedDay; // 연/월 업데이트
+                                });
+                              },
                               eventLoader: (day) => _getEventsForDay(day),
                               // 이벤트 로드 설정
                               calendarBuilders: CalendarBuilders(
                                 markerBuilder: (context, date, events) {
                                   // print('Date: $date, Events: $events');
-                                  print(
-                                      'Events for $date: $events'); // 디버깅 메시지 추가
-
+                                  final limitedEvents =
+                                      (events as List<Map<String, dynamic>>)
+                                          .take(4)
+                                          .toList();
                                   if (events.isNotEmpty) {
                                     return Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
-                                      children:
-                                          (events as List<Map<String, dynamic>>)
-                                              .map((event) {
+                                      children: (limitedEvents).map((event) {
                                         if (event['tag'] != null) {
                                           // t
 
@@ -285,7 +292,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               calendarStyle: CalendarStyle(
                                 todayDecoration: BoxDecoration(),
                                 todayTextStyle: TextStyle(color: Colors.black),
-                                weekendTextStyle: TextStyle(color: Colors.red),
                                 selectedDecoration: BoxDecoration(),
                                 selectedTextStyle:
                                     TextStyle(color: Colors.black),
@@ -302,173 +308,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     flex: 5,
                     child: _buildLabeledBox(
                       label: '일정',
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 일정 제목
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onDoubleTap: () => _changeTagColor(
-                                      _tags.indexOf(_selectedTag!)),
-                                  child: CircleAvatar(
-                                    backgroundColor: _selectedTag != null
-                                        ? _selectedTag!['color'] : Colors.grey,
-                                    radius: 8,
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _titleController,
-                                    decoration: InputDecoration(
-                                      labelText: '제목',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 24),
-                            // 시작 날짜와 종료 날짜
-                            Container(
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF91918E),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildDateTimePickerField(
-                                      context,
-                                      selectedDateTime: _selectedStartDateTime,
-                                      color: Colors.blue,
-                                      isStart: true,
-                                    ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: _buildDateTimePickerField(
-                                      context,
-                                      color: Color(0xFF91918E),
-                                      selectedDateTime: _selectedEndDateTime,
-                                      isStart: false,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: 24),
-                            // 태그 리스트
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "일정 태그",
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.add_outlined,
-                                      color: Colors.black),
-                                  onPressed: _tags.length < 5 ? _addTag : null,
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: List.generate(_tags.length, (index) {
-                                return Row(
-                                  children: [
-                                    Radio<Map<String, dynamic>>(
-                                      value: _tags[index], // 현재 태그 데이터
-                                      groupValue: _selectedTag, // 선택된 태그
-                                      onChanged: (Map<String, dynamic>? value) {
-                                        setState(() {
-                                          _selectedTag = value; // 선택된 태그 저장
-                                        });
-                                      },
-                                    ),
-                                    GestureDetector(
-                                      onDoubleTap: () => _changeTagColor(index),
-                                      child: CircleAvatar(
-                                          backgroundColor: _tags[index]
-                                              ['color'],
-                                          radius: 8),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: GestureDetector(
-                                        onDoubleTap: () =>
-                                            _editTagName(context, index),
-                                        child: Text(
-                                          _tags[index]['name'],
-                                          style: TextStyle(fontSize: 16),
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon:
-                                          Icon(Icons.close, color: Colors.grey),
-                                      onPressed: _tags.length > 1
-                                          ? () => _deleteTag(index)
-                                          : null,
-                                    ),
-                                  ],
-                                );
-                              }),
-                            ),
-                            SizedBox(height: 24),
-                            // 상세 일정 작성
-                            Expanded(
-                              child: TextField(
-                                controller: _descriptionController,
-                                maxLines: null,
-                                expands: true,
-                                decoration: InputDecoration(
-                                  labelText: '상세 내용',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            // 작성 완료 버튼
-                            ElevatedButton(
-                              onPressed: () {
-                                // print(_selectedStartDateTime.toString());
-                                // print(_selectedEndDateTime.toString());
-                                if (_selectedStartDateTime != null &&
-                                    _selectedEndDateTime != null &&
-                                    _selectedTag != null &&
-                                    _titleController.text.isNotEmpty) {
-                                  _addEvent(
-                                    startDate: _selectedStartDateTime!,
-                                    endDate: _selectedEndDateTime!,
-                                    title: _titleController.text,
-                                    description: _descriptionController.text,
-                                    tag: _selectedTag!,
-                                  );
-
-                                  _titleController.clear();
-                                  _descriptionController.clear();
-
-                                  setState(() {
-                                    _selectedTag = null;
-                                  });
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('모든 필드를 입력해주세요!')),
-                                  );
-                                }
-                              },
-                              child: Text('작성 완료'),
-                            )
-                          ],
-                        ),
-                      ),
+                      child: _isCreatingEvent
+                          ? _buildEventEditor()
+                          : _buildSchedule(context),
                     ),
                   ),
                 ],
@@ -478,6 +320,415 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
     );
+  }
+
+  /// 예정된 일정 화면
+  Widget _buildSchedule(BuildContext context) {
+    // 날짜별로 정렬된 이벤트
+    final sortedDates = _dateIndex.keys.toList()..sort();
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: sortedDates.length,
+          itemBuilder: (context, dateIndex) {
+            final date = sortedDates[dateIndex];
+            final events = _getEventsForDay(date); // 해당 날짜의 이벤트 목록 가져오기
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 날짜 헤더
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${date.year}년 ${date.month}월 ${date.day}일 (${_getWeekday(date)})',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _selectedDate = date; // 선택된 날짜로 설정
+                            _selectedStartDateTime =
+                                date.add(Duration(hours: 9)); // 기본 시작 시간 설정
+                            _selectedEndDateTime =
+                                date.add(Duration(hours: 10)); // 기본 종료 시간 설정
+                            _toggleScreen(); // 화면 전환
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                // 해당 날짜의 이벤트 목록
+                ...events.map((event) {
+                  final eventStartDate = event['startDate'];
+                  final eventEndDate = event['endDate'];
+                  final adjustedStart =
+                      date.isAtSameMomentAs(_stripTime(eventStartDate))
+                          ? eventStartDate
+                          : DateTime(date.year, date.month, date.day, 0, 0);
+                  final adjustedEnd =
+                      date.isAtSameMomentAs(_stripTime(eventEndDate))
+                          ? eventEndDate
+                          : DateTime(date.year, date.month, date.day, 23, 59);
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // 태그 색상 표시
+                          Container(
+                            width: 8,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: event['tag']['color'],
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // 일정 제목
+                                  Row(
+                                    children: [
+                                      Text(
+                                        event['title'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      Spacer(),
+                                      IconButton(
+                                        icon: Icon(Icons.edit, color: Colors.grey, ),
+                                        onPressed: () {
+                                          _toggleScreen(); // 이전 화면으로 전환
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: BoxConstraints(),
+                                        hoverColor: Colors.transparent,
+                                        highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+                                        splashColor: Colors.transparent, // 스플래시 효과 제거
+
+                                      ),
+                                      SizedBox(width: 5,),
+                                      IconButton(
+                                        icon: Icon(Icons.close_outlined, color: Colors.grey, ),
+                                        onPressed: () {
+                                          _toggleScreen(); // 이전 화면으로 전환
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: BoxConstraints(),
+                                        hoverColor: Colors.transparent,
+                                        highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+                                        splashColor: Colors.transparent, // 스플래시 효과 제거
+
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                  // 일정 설명
+                                  Text(
+                                    event['description'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  // 시작 시간 - 종료 시간
+                                  Row(
+                                    children: [
+                                      Icon(Icons.access_time,
+                                          size: 14, color: Colors.grey),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+        Positioned(
+          bottom: -10 ,
+          right: -10,
+          child: IconButton(
+            icon: Icon(Icons.add_circle_outline, color: Colors.grey, size: 30,),
+            onPressed: () {
+              _selectedStartDateTime = DateTime.now(); // 시작 날짜를 오늘로 설정
+              _selectedEndDateTime = DateTime.now().add(Duration(hours: 1)); // 기본적으로 1시간 뒤를 종료 시간으로 설정
+              _toggleScreen(); // 이전 화면으로 전환
+            },
+            hoverColor: Colors.transparent,
+            highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+            splashColor: Colors.transparent, // 스플래시 효과 제거
+
+          ),
+        ),
+      ],
+    );
+  }
+
+// 요일을 반환하는 함수
+  String _getWeekday(DateTime date) {
+    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    return weekdays[date.weekday - 1];
+  }
+
+// 시간 포맷팅 함수
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Widget _buildEventEditor() {
+    return Stack(children: [
+      Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 일정 제목
+            Row(
+              children: [
+                GestureDetector(
+                  onDoubleTap: () =>
+                      _changeTagColor(_tags.indexOf(_selectedTag!)),
+                  child: CircleAvatar(
+                    backgroundColor: _selectedTag != null
+                        ? _selectedTag!['color']
+                        : Colors.grey,
+                    radius: 8,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _titleController,
+                    decoration: InputDecoration(
+                      labelText: '제목',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24),
+            // 시작 날짜와 종료 날짜
+            Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Color(0xFF91918E),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildDateTimePickerField(
+                      context,
+                      selectedDateTime: _selectedStartDateTime,
+                      color: Colors.blue,
+                      isStart: true,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: _buildDateTimePickerField(
+                      context,
+                      color: Color(0xFF91918E),
+                      selectedDateTime: _selectedEndDateTime,
+                      isStart: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 24),
+            // 태그 리스트
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "일정 태그",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: Icon(Icons.add_outlined, color: Colors.black),
+                  onPressed: _tags.length < 5 ? _addTag : null,
+                ),
+              ],
+            ),
+            Column(
+              children: List.generate(_tags.length, (index) {
+                return Row(
+                  children: [
+                    Radio<Map<String, dynamic>>(
+                      value: _tags[index], // 현재 태그 데이터
+                      groupValue: _selectedTag, // 선택된 태그
+                      onChanged: (Map<String, dynamic>? value) {
+                        setState(() {
+                          _selectedTag = value; // 선택된 태그 저장
+                        });
+                      },
+                    ),
+                    GestureDetector(
+                      onDoubleTap: () => _changeTagColor(index),
+                      child: CircleAvatar(
+                          backgroundColor: _tags[index]['color'], radius: 8),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: GestureDetector(
+                        onDoubleTap: () => _editTagName(context, index),
+                        child: Text(
+                          _tags[index]['name'],
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.grey),
+                      onPressed:
+                          _tags.length > 1 ? () => _deleteTag(index) : null,
+                    ),
+                  ],
+                );
+              }),
+            ),
+            SizedBox(height: 24),
+            // 상세 일정 작성
+            Expanded(
+              child: TextField(
+                controller: _descriptionController,
+                maxLines: null,
+                expands: true,
+                decoration: InputDecoration(
+                  labelText: '상세 내용',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            // 작성 완료 버튼
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    if (_selectedStartDateTime != null &&
+                        _selectedEndDateTime != null &&
+                        _selectedTag != null &&
+                        _titleController.text.isNotEmpty) {
+                      _addEvent(
+                        startDate: _selectedStartDateTime!,
+                        endDate: _selectedEndDateTime!,
+                        title: _titleController.text,
+                        description: _descriptionController.text,
+                        tag: _selectedTag!,
+                      );
+
+                      _titleController.clear();
+                      _descriptionController.clear();
+                      _toggleScreen();
+                      setState(() {
+                        _selectedTag = _tags[0];
+                      });
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('모든 필드를 입력해주세요!')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    backgroundColor: Colors.grey[200],
+                    // 텍스트 색상 (검정)
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    // 버튼 크기 조정
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8), // 적당히 둥근 모서리
+                    ),
+                    elevation: 1, // 낮은 그림자 효과
+                  ),
+                  child: Text(
+                    '작성 완료',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500, // 중간 굵기
+                      color: Colors.black, // 텍스트 색상
+                    ),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+      ),
+      Positioned(
+        top: -10,
+        right: -10,
+        child: IconButton(
+          icon: Icon(Icons.close, color: Colors.grey),
+          onPressed: () {
+            _titleController.clear();
+            _descriptionController.clear();
+            _toggleScreen(); // 이전 화면으로 전환
+          },
+          hoverColor: Colors.transparent,
+          highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+          splashColor: Colors.transparent, // 스플래시 효과 제거
+
+        ),
+      ),
+    ]);
   }
 
   Widget _buildLabeledBox({
@@ -759,10 +1010,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       // 이벤트 리스트에 추가
       _events.add(newEvent);
-      int eventIndex = _events.length - 1;
 
       // 날짜 인덱스 업데이트
-
       DateTime currentDate = startDate;
       while (currentDate.isBefore(endDate) ||
           currentDate.isAtSameMomentAs(endDate)) {
@@ -770,9 +1019,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (_dateIndex[strippedDate] == null) {
           _dateIndex[strippedDate] = [];
         }
-        _dateIndex[strippedDate]!.add(eventIndex);
+        _dateIndex[strippedDate]!.add(_events.length - 1);
         currentDate = currentDate.add(Duration(days: 1));
       }
+
+      // 이벤트 리스트 정렬
+      _sortEvents();
     });
 
     _saveData();
@@ -802,6 +1054,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _stripTime(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  void _sortEvents() {
+    _events.sort((a, b) => a['startDate'].compareTo(b['startDate']));
   }
 }
 
