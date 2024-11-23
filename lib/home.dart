@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
+import 'widgets/todo_data.dart';
+import 'widgets/summary_chart.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ToDoData(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -25,6 +33,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
+
   List<String> recentPages = []; // 최근 페이지 목록
   Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
   int pageCounter = 1; // 페이지 숫자 관리
@@ -184,8 +194,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
-                            child: Center(
-                              child: Text('성과 내용 없음'),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 16), // 추가된 부분
+                              padding: EdgeInsets.all(16), // 추가된 부분
+                              child: Center(
+                                child: SummaryChart(toDoData: context.watch<ToDoData>()),
+                              ),
                             ),
                           ),
                         ),
@@ -239,33 +253,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLabeledBox({required String label, required Widget child}) {
-    return Container(
-      child: Stack(
-        children: [
-          Container(
-            margin: EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Color(0xFFF2F1EE)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.only(top: 24),
-            child: child,
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Color(0xFFF2F1EE)),
+            borderRadius: BorderRadius.circular(8),
           ),
-          Positioned(
-            left: 16,
-            top: 0,
-            child: Container(
-              color: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
+          padding: EdgeInsets.only(top: 24),
+          child: child,
+        ),
+        Positioned(
+          left: 16,
+          top: 0,
+          child: Container(
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
