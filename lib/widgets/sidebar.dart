@@ -101,11 +101,6 @@ class _SidebarState extends State<Sidebar> {
     );
   }
 
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
