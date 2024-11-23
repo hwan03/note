@@ -4,6 +4,17 @@ import 'dart:convert'; // JSON 변환용
 import 'widgets/sidebar.dart'; // Sidebar import
 
 class ToDoPage extends StatefulWidget {
+  final List<String> recentPages;
+  final Function(String) navigateToPage;
+  final VoidCallback addNewPage;
+
+  const ToDoPage({
+    required this.recentPages,
+    required this.navigateToPage,
+    required this.addNewPage,
+    Key? key,
+  }) : super(key: key);
+
   @override
   _ToDoPageState createState() => _ToDoPageState();
 }
@@ -100,7 +111,11 @@ class _ToDoPageState extends State<ToDoPage> {
     return Scaffold(
       body: Row(
         children: [
-          Sidebar(), // Sidebar widget 사용
+          Sidebar(
+            recentPages: widget.recentPages,
+            navigateToPage: widget.navigateToPage,
+            addNewPage: widget.addNewPage,
+          ), // Sidebar widget 사용
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16.0),

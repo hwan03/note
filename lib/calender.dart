@@ -5,14 +5,43 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
-class CalenderPage extends StatefulWidget {
-  const CalenderPage({super.key});
+class CalendarPage extends StatefulWidget {
+  final List<String> recentPages;
+  final Function(String) navigateToPage;
+  final VoidCallback addNewPage;
+
+  const CalendarPage({
+    required this.recentPages,
+    required this.navigateToPage,
+    required this.addNewPage,
+    Key? key,
+  }) : super(key: key);
+
 
   @override
-  _CalenderPageState createState() => _CalenderPageState();
+  _CalendarPageState createState() => _CalendarPageState();
 }
 
-class _CalenderPageState extends State<CalenderPage> {
+class _CalendarPageState extends State<CalendarPage> {
+  List<String> recentPages = ['Page 1', 'Page 2']; // 더미 데이터
+  int pageCounter = 3; // 새 페이지 번호 관리
+
+  void navigateToPage(String pageName) {
+    // 페이지 이동 처리
+    print('Navigating to $pageName'); // 실제 페이지 이동 로직 대신 로그 출력
+    widget.navigateToPage(pageName);
+  }
+
+  void addNewPage() {
+    // 새 페이지 추가
+    setState(() {
+      final newPageName = 'Page $pageCounter';
+      pageCounter++;
+      recentPages.insert(0, newPageName);
+    });
+    widget.addNewPage();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -31,14 +60,26 @@ class _CalenderPageState extends State<CalenderPage> {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: CalendarScreen(),
+      home: CalendarScreen(
+        recentPages: widget.recentPages, // 전달
+        navigateToPage: widget.navigateToPage, // 전달
+        addNewPage: widget.addNewPage, // 전달
+      ),
     );
   }
 }
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final List<String> recentPages;
+  final Function(String) navigateToPage;
+  final VoidCallback addNewPage;
 
+  const CalendarScreen({
+    required this.recentPages,
+    required this.navigateToPage,
+    required this.addNewPage,
+    Key? key,
+  }) : super(key: key);
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
@@ -137,7 +178,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Sidebar(),
+          Sidebar(
+            recentPages: widget.recentPages,
+            navigateToPage: widget.navigateToPage,
+            addNewPage: widget.addNewPage,
+          ),
           // Main Content
           // 달력 영역
           Expanded(

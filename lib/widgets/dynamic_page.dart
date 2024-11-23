@@ -12,17 +12,20 @@ class DynamicPage extends StatefulWidget {
   final String title;
   final String content;
   final List<String> recentPages; // 최근 페이지 목록
+  final Function(String) navigateToPage;
   final Function(String, String) onUpdate;
   final Function() onDelete;
+  final VoidCallback addNewPage; // 새 페이지 추가 콜백 추가
 
   DynamicPage({
     required this.title,
     required this.content,
     required this.recentPages,
+    required this.navigateToPage,
     required this.onUpdate,
     required this.onDelete,
+    required this.addNewPage, // 추가된 매개변수
   });
-
   @override
   _DynamicPageState createState() => _DynamicPageState();
 }
@@ -53,6 +56,16 @@ class _DynamicPageState extends State<DynamicPage> {
 
   // 인라인 페이지 데이터 관리
   List<Map<String, String>> inlinePages = [];
+
+  // 텍스트 스타일 적용 함수
+  TextStyle _applyTextStyle() {
+    return TextStyle(
+      fontSize: textSize,
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+    );
+  }
 
   @override
   void initState() {
@@ -125,7 +138,12 @@ class _DynamicPageState extends State<DynamicPage> {
       todoList.removeAt(index);
     });
   }
-
+  void deletePage(String pageName) {
+    setState(() {
+      widget.recentPages.remove(pageName); // 페이지를 최근 목록에서 삭제
+      widget.onDelete(); // 상위 콜백 호출
+    });
+  }
   Widget buildCalendar() {
     return TableCalendar(
       firstDay: DateTime.utc(2020, 1, 1),
@@ -394,6 +412,23 @@ class _DynamicPageState extends State<DynamicPage> {
           title: pageData['title']!, // 해당 인라인 페이지 제목
           content: pageData['content']!, // 해당 인라인 페이지 내용
           recentPages: inlinePages.map((page) => page['title']!).toList(), // 인라인 페이지들의 제목 리스트 전달
+          navigateToPage: (pageName) {
+            // 페이지 이동 처리
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DynamicPage(
+                  title: pageName,
+                  content: pageData[pageName] ?? '내용 없음',
+                  recentPages: widget.recentPages,
+                  navigateToPage: widget.navigateToPage,
+                  onUpdate: widget.onUpdate,
+                  onDelete: widget.onDelete,
+                  addNewPage: widget.addNewPage,
+                ),
+              ),
+            );
+          },
           onUpdate: (newTitle, newContent) {
             setState(() {
               pageData['title'] = newTitle;
@@ -406,6 +441,7 @@ class _DynamicPageState extends State<DynamicPage> {
               Navigator.pop(context);
             });
           },
+          addNewPage: widget.addNewPage, // 필수 매개변수 전달
         ),
       ),
     );
@@ -461,6 +497,7 @@ class _DynamicPageState extends State<DynamicPage> {
                       title: pageName,
                       content: _getContentForPage(pageName),
                       recentPages: widget.recentPages,
+                      navigateToPage: widget.navigateToPage,
                       onUpdate: (newTitle, newContent) {
                         if (mounted) {
                           setState(() {
@@ -475,7 +512,7 @@ class _DynamicPageState extends State<DynamicPage> {
                             Navigator.pop(context);
                           });
                         }
-                      },
+                      },addNewPage: widget.addNewPage, // addNewPage 추가
                     ),
                   ),
                 ).then((_) {
@@ -581,10 +618,21 @@ class _DynamicPageState extends State<DynamicPage> {
     child :Scaffold(
       body: Row(
         children: [
-          Sidebar(),
+          Sidebar(
+            recentPages: widget.recentPages, // 전달
+            navigateToPage: widget.navigateToPage, // 전달
+            addNewPage: widget.addNewPage,
+          ),
           Expanded(
             child: Scaffold(
               appBar: AppBar(
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back),
+                  onPressed: () {
+                    // 홈으로 이동
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  },
+                ),
                 backgroundColor: Colors.grey[200],
                 bottom: PreferredSize(
                   preferredSize: Size.fromHeight(1),
@@ -637,6 +685,7 @@ class _DynamicPageState extends State<DynamicPage> {
                                     border: InputBorder.none,
                                   ),
                                 ),
+
                               ),
 
                               if (isKeyboardVisible) buildCustomKeyboard(),
