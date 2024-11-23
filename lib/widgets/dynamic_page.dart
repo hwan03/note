@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
+// 페이지별 제목과 내용을 관리하는 맵 추가
+Map<String, String> pageData = {
+  "Page 1": "이것은 페이지 1의 초기 내용입니다.",
+  "Page 2": "이것은 페이지 2의 초기 내용입니다.",
+  "Page 3": "이것은 페이지 3의 초기 내용입니다.",
+};
 
 class DynamicPage extends StatefulWidget {
   final String title;
@@ -35,6 +41,7 @@ class _DynamicPageState extends State<DynamicPage> {
   late String pageContent;
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
+  final FocusNode _titleFocusNode = FocusNode(); // 제목 입력 필드에 포커스 관리 추가
   final FocusNode _contentFocusNode = FocusNode();
 
   DateTime _selectedDay = DateTime.now();
@@ -43,12 +50,32 @@ class _DynamicPageState extends State<DynamicPage> {
   final TextEditingController _todoController = TextEditingController();
 
 
+
   // 인라인 페이지 데이터 관리
   List<Map<String, String>> inlinePages = [];
 
   @override
   void initState() {
     super.initState();
+    // 제목 포커스 해제 시 저장 처리
+    _titleFocusNode.addListener(() {
+      if (!_titleFocusNode.hasFocus) {
+        _updatePageData();
+      }
+    });
+
+    // 내용 포커스 해제 시 저장 처리
+    _contentFocusNode.addListener(() {
+      if (!_contentFocusNode.hasFocus) {
+        _updatePageData();
+      }
+    });
+    // 내용 포커스 해제 시 저장
+    _contentFocusNode.addListener(() {
+      if (!_contentFocusNode.hasFocus) {
+        widget.onUpdate(pageTitle, pageContent);
+      }
+    });
     pageTitle = widget.title;
     pageContent = widget.content;
     _titleController.text = pageTitle;
@@ -66,11 +93,19 @@ class _DynamicPageState extends State<DynamicPage> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _titleFocusNode.dispose(); // FocusNode 정리
     _contentFocusNode.dispose();
     _todoController.dispose();
     super.dispose();
   }
-
+  void _updatePageData() {
+    if (pageTitle.trim().isNotEmpty) {
+      setState(() {
+        pageData[pageTitle] = pageContent; // 제목과 내용 저장
+      });
+      widget.onUpdate(pageTitle, pageContent); // 기존 onUpdate 호출
+     }
+  }
   void addTodoItem() {
     if (_todoController.text.isEmpty) return;
     setState(() {
@@ -186,11 +221,16 @@ class _DynamicPageState extends State<DynamicPage> {
       );
       return;
     }
-    widget.onUpdate(pageTitle, pageContent);
+
     setState(() {
-      isEditing = false;
-    });
+      // 기존 제목이 있으면 내용만 업데이트, 없으면 새 항목 추가
+      pageData[pageTitle] = pageContent;
+});
+
+    widget.onUpdate(pageTitle, pageContent);
   }
+
+
 
   /// 글머리 기호(`- `) 추가
   void insertBulletPoint() {
@@ -411,33 +451,58 @@ class _DynamicPageState extends State<DynamicPage> {
           final pageName = widget.recentPages[index];
           return GestureDetector(
             onTap: () {
-              if (pageName != widget.title) {
+              if (pageName != pageTitle) {
+                // 현재 페이지 데이터 저장
+                saveChanges();
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
                     builder: (context) => DynamicPage(
                       title: pageName,
-                      content: widget.content, // 필요 시 페이지별 내용을 동적으로 관리
+                      content: _getContentForPage(pageName),
                       recentPages: widget.recentPages,
-                      onUpdate: widget.onUpdate,
-                      onDelete: widget.onDelete,
+                      onUpdate: (newTitle, newContent) {
+                        if (mounted) {
+                          setState(() {
+                            pageData[newTitle] = newContent;
+                          });
+                        }
+                      },
+                      onDelete: () {
+                        if (mounted) {
+                          setState(() {
+                            pageData.remove(pageName);
+                            Navigator.pop(context);
+                          });
+                        }
+                      },
                     ),
                   ),
-                );
+                ).then((_) {
+                  // 이동 후 현재 상태 업데이트
+                  if (!mounted) return;
+                  setState(() {
+                    pageTitle = pageName;
+                    pageContent = _getContentForPage(pageName);
+                    _titleController.text = pageTitle;
+                    _contentController.text = pageContent;
+                   });
+                });
               }
-            },
+            }
+            ,
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 8),
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: pageName == widget.title ? Colors.blue[50] : Colors.white,
+                color: pageName == pageTitle ? Colors.blue[50] : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.blueAccent),
               ),
               child: Text(
                 pageName,
                 style: TextStyle(
-                  color: pageName == widget.title ? Colors.blue : Colors.black,
+                  color: pageName == pageTitle ? Colors.blue : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -447,6 +512,14 @@ class _DynamicPageState extends State<DynamicPage> {
       ),
     );
   }
+// 페이지 제목을 기반으로 내용을 반환하는 함수
+  String _getContentForPage(String pageName) {
+    return pageData[pageName]!;
+  }
+
+
+
+
 
   Widget buildContent() {
     final text = _contentController.text;
@@ -499,7 +572,13 @@ class _DynamicPageState extends State<DynamicPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+        // 화면 아무 곳이나 터치하면 포커스 해제
+        onTap: () {
+      FocusScope.of(context).unfocus(); // 모든 FocusNode 해제
+    },
+    behavior: HitTestBehavior.opaque, // 투명 영역도 터치 이벤트 감지
+    child :Scaffold(
       body: Row(
         children: [
           Sidebar(),
@@ -516,13 +595,17 @@ class _DynamicPageState extends State<DynamicPage> {
                 ),
                 title: TextField(
                   controller: _titleController,
-                  onChanged: (value) => pageTitle = value,
+                  focusNode: _titleFocusNode, // FocusNode 연결
+                  onChanged: (value) {
+                    setState(() {
+                      pageTitle = value;
+                    });
+                  },
                   style: TextStyle(color: Colors.black, fontSize: 20),
                   decoration: InputDecoration(
                     hintText: '제목을 입력하세요',
                     border: InputBorder.none,
                   ),
-                  readOnly: !isEditing,
                 ),
               ),
               body: Column(
@@ -541,6 +624,12 @@ class _DynamicPageState extends State<DynamicPage> {
                               Expanded(
                                 child: TextField(
                                   controller: _contentController,
+                                  focusNode: _contentFocusNode, // 내용 FocusNode 연결
+                                  onChanged: (value) {
+                                    setState(() {
+                                      pageContent = value; // 내용 상태 업데이트
+                                    });
+                                  },
                                   maxLines: null,
                                   style: TextStyle(fontSize: textSize),
                                   decoration: InputDecoration(
@@ -564,6 +653,7 @@ class _DynamicPageState extends State<DynamicPage> {
           ),
         ],
       ),
+    )
     );
   }
 }

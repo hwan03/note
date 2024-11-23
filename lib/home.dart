@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
+import 'widgets/todo_data.dart';
+import 'widgets/summary_chart.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ToDoData(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -25,6 +33,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
+
   List<String> recentPages = []; // 최근 페이지 목록
   Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
   int pageCounter = 1; // 페이지 숫자 관리
@@ -127,13 +137,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       itemCount: recentPages.length,
                       itemBuilder: (context, index) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Color(0xFFF2F1EE)),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          // padding: EdgeInsets.all(8),
-                          // padding: E
+                        final pageName = recentPages[index];
+                        return GestureDetector(
+                          onTap: () => navigateToPage(pageName), // 페이지 선택 시 이동
+                          child: Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Color(0xFFF2F1EE)),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              // padding: EdgeInsets.all(8),
+                              // padding: E
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -149,7 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 alignment: Alignment.bottomLeft,
                                 child: Icon(Icons.description_outlined,
-                                    size: 40, color: Color(0xFF91918E)),
+                                    size: 40, color: Color(0xFF91918E),),
+
                               ),
                               Padding(
                                 padding: EdgeInsets.all(15),
@@ -158,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '페이지${index + 1}',
+                                        recentPages[index],
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold),
                                       ),
@@ -166,6 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ]),
                               )
                             ],
+                            ),
                           ),
                         );
                       },
@@ -180,8 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
-                            child: Center(
-                              child: Text('성과 내용 없음'),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 16), // 추가된 부분
+                              padding: EdgeInsets.all(16), // 추가된 부분
+                              child: Center(
+                                child: SummaryChart(toDoData: context.watch<ToDoData>()),
+                              ),
                             ),
                           ),
                         ),
