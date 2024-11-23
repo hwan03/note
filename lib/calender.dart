@@ -62,7 +62,6 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 }
-
 class CalendarScreen extends StatefulWidget {
   final List<String> recentPages;
   final Function(String) navigateToPage;

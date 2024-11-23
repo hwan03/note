@@ -129,7 +129,6 @@ class _ToDoPageState extends State<ToDoPage> {
                               ],
                             ),
                           ),
-
                           // 체크리스트 섹션
                           Container(
                             padding: EdgeInsets.all(16),
