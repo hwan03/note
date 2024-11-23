@@ -1,29 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'widgets/todo_data.dart'; // ToDoData 클래스 임포트
 import 'widgets/sidebar.dart'; // Sidebar import
 import 'widgets/summary_chart.dart'; // SummarySection import
 
-class ToDoPage extends StatefulWidget {
-  @override
-  _ToDoPageState createState() => _ToDoPageState();
-}
-
-class _ToDoPageState extends State<ToDoPage> {
-  final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeData(); // 데이터 초기화
-  }
-
-  Future<void> _initializeData() async {
-    await toDoData.loadSections(); // 저장된 데이터 불러오기
-    setState(() {}); // 화면 갱신
-  }
-
+class ToDoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final toDoData = context.watch<ToDoData>(); // Provider로 상태 가져오기
     final overallProgress = toDoData.calculateOverallProgress(); // 전체 이행률 계산
 
     return Scaffold(
@@ -153,10 +137,10 @@ class _ToDoPageState extends State<ToDoPage> {
                                         title: Text(item['label']),
                                         value: item['checked'],
                                         onChanged: (value) {
-                                          setState(() {
-                                            item['checked'] = value;
-                                          });
-                                          toDoData.saveSections(); // 변경 사항 저장
+                                          toDoData.toggleCheck(
+                                            section['title'],
+                                            item['label'],
+                                          );
                                         },
                                       );
                                     }).toList(),

@@ -1,7 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:provider/provider.dart';
 
-class ToDoData {
+class ToDoData extends ChangeNotifier {
   List<Map<String, dynamic>> sections = [
     {
       'title': '사이버 교육수강',
@@ -59,6 +61,21 @@ class ToDoData {
   Future<void> saveSections() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('sections', json.encode(sections));
+  }
+
+  // 상태 변경 시 알림
+  void toggleCheck(String sectionTitle, String itemLabel) {
+    for (var section in sections) {
+      if (section['title'] == sectionTitle) {
+        for (var item in section['items']) {
+          if (item['label'] == itemLabel) {
+            item['checked'] = !item['checked'];
+            notifyListeners(); // 변경 알림
+            break;
+          }
+        }
+      }
+    }
   }
 
   // 항목별 비율 계산
