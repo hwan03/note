@@ -4,7 +4,22 @@ import 'widgets/todo_data.dart'; // ToDoData 클래스 임포트
 import 'widgets/sidebar.dart'; // Sidebar import
 import 'widgets/summary_chart.dart'; // SummarySection import
 
-class ToDoPage extends StatelessWidget {
+class ToDoPage extends StatefulWidget {
+  final List<String> recentPages;
+  final Function(String) navigateToPage;
+  final VoidCallback addNewPage;
+
+  const ToDoPage({
+    required this.recentPages,
+    required this.navigateToPage,
+    required this.addNewPage,
+    Key? key,
+  }) : super(key: key);
+  @override
+  _ToDoPageState createState() => _ToDoPageState();
+}
+
+class _ToDoPageState extends State<ToDoPage> {
   @override
   Widget build(BuildContext context) {
     final toDoData = context.watch<ToDoData>(); // Provider로 상태 가져오기
@@ -13,7 +28,11 @@ class ToDoPage extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          Sidebar(), // Sidebar widget 사용
+          Sidebar(
+            recentPages: widget.recentPages,
+            navigateToPage: widget.navigateToPage,
+            addNewPage: widget.addNewPage,
+          ), // Sidebar widget 사용
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16.0),
