@@ -521,32 +521,18 @@ class _DynamicPageState extends State<DynamicPage> {
   }
 
   Widget buildContent() {
-    final text = _contentController.text;
-    final regex = RegExp(r'\[(Inline Page \d+)\]');
-    final spans = <TextSpan>[];
-    int lastMatchEnd = 0;
+    TextStyle textStyle = TextStyle(
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+    );
 
-    for (final match in regex.allMatches(text)) {
-      if (match.start > lastMatchEnd) {
-        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
-      }
-
-      final pageTitle = match.group(1)!;
-      spans.add(
-        TextSpan(
-          text: pageTitle,
-          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
-        ),
-      );
-
-      lastMatchEnd = match.end;
-    }
-
-    if (lastMatchEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
-    }
-
-    return RichText(text: TextSpan(style: TextStyle(fontSize: textSize), children: spans));
+    return SingleChildScrollView(
+      child: Text(
+        _contentController.text,
+        style: textStyle,
+      ),
+    );
   }
 
   Widget buildCustomKeyboard() {
@@ -630,7 +616,12 @@ class _DynamicPageState extends State<DynamicPage> {
                                     });
                                   },
                                   maxLines: null,
-                                  style: TextStyle(fontSize: textSize),
+                                  style: TextStyle(
+                                    fontSize: textSize,
+                                    fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                                    fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+                                    decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: "내용을 입력하세요",
                                     border: InputBorder.none,
