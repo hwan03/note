@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'widgets/todo_data.dart';
 import 'widgets/summary_chart.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ToDoData(),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -189,8 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '성과 관리 편람',
-                            child: Center(
-                              child: SummaryChart(toDoData: toDoData),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 16), // 추가된 부분
+                              padding: EdgeInsets.all(16), // 추가된 부분
+                              child: Center(
+                                child: SummaryChart(toDoData: context.watch<ToDoData>()),
+                              ),
                             ),
                           ),
                         ),
