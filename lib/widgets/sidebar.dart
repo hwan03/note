@@ -131,14 +131,8 @@ class _SidebarState extends State<Sidebar> {
             icon: Icons.home_outlined,
             label: '홈',
             onTap: () {
-              // 현재 Navigator 스택을 모두 pop
-              if (Navigator.canPop(context)) {
-                Navigator.of(context).pop(); // 현재 스택에서 pop
-              } else {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => HomeScreen()),
-                );
-              }
+              // 홈 버튼 클릭 시 HomeScreen으로 이동
+              Navigator.popUntil(context, (route) => route.isFirst); // 스택을 초기화하고 첫 화면으로 돌아감);
             },
           ),
           _buildSidebarItem(

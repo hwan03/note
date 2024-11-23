@@ -3,9 +3,6 @@ import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
 // 페이지별 제목과 내용을 관리하는 맵 추가
 Map<String, String> pageData = {
-  "Page 1": "이것은 페이지 1의 초기 내용입니다.",
-  "Page 2": "이것은 페이지 2의 초기 내용입니다.",
-  "Page 3": "이것은 페이지 3의 초기 내용입니다.",
 };
 
 class DynamicPage extends StatefulWidget {
@@ -111,14 +108,38 @@ class _DynamicPageState extends State<DynamicPage> {
     _todoController.dispose();
     super.dispose();
   }
+
+  void _handleDoubleClick(FocusNode focusNode) {
+    // 포커스가 이미 활성화된 상태에서 더블클릭하면 포커스 해제
+    if (focusNode.hasFocus) {
+      FocusScope.of(context).unfocus();
+    } else {
+      focusNode.requestFocus();
+    }
+  }
+
   void _updatePageData() {
     if (pageTitle.trim().isNotEmpty) {
       setState(() {
-        pageData[pageTitle] = pageContent; // 제목과 내용 저장
+        // 제목 변경 시 기존 데이터 갱신
+        if (widget.title != pageTitle) {
+          final existingContent = pageData.remove(widget.title); // 기존 제목 데이터 제거
+          pageData[pageTitle] = existingContent ?? pageContent; // 새 제목으로 데이터 이동
+
+          // recentPages에서도 제목 변경
+          final pageIndex = widget.recentPages.indexOf(widget.title);
+          if (pageIndex != -1) {
+            widget.recentPages[pageIndex] = pageTitle;
+          }
+        } else {
+          // 제목이 같으면 내용만 업데이트
+          pageData[pageTitle] = pageContent;
+        }
       });
-      widget.onUpdate(pageTitle, pageContent); // 기존 onUpdate 호출
-     }
+      widget.onUpdate(pageTitle, pageContent); // 데이터 저장
+    }
   }
+
   void addTodoItem() {
     if (_todoController.text.isEmpty) return;
     setState(() {
@@ -477,7 +498,12 @@ class _DynamicPageState extends State<DynamicPage> {
     }
   }
   Widget buildRecentPagesBar() {
-    return Container(
+    return GestureDetector(
+        // 페이지 리스트 영역 클릭 시 포커스 해제
+        onTap: () {
+      FocusScope.of(context).unfocus();
+    },
+    child:Container(
       height: 50,
       color: Colors.grey[300],
       child: ListView.builder(
@@ -487,47 +513,19 @@ class _DynamicPageState extends State<DynamicPage> {
           final pageName = widget.recentPages[index];
           return GestureDetector(
             onTap: () {
-              if (pageName != pageTitle) {
-                // 현재 페이지 데이터 저장
-                saveChanges();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DynamicPage(
-                      title: pageName,
-                      content: _getContentForPage(pageName),
-                      recentPages: widget.recentPages,
-                      navigateToPage: widget.navigateToPage,
-                      onUpdate: (newTitle, newContent) {
-                        if (mounted) {
-                          setState(() {
-                            pageData[newTitle] = newContent;
-                          });
-                        }
-                      },
-                      onDelete: () {
-                        if (mounted) {
-                          setState(() {
-                            pageData.remove(pageName);
-                            Navigator.pop(context);
-                          });
-                        }
-                      },addNewPage: widget.addNewPage, // addNewPage 추가
-                    ),
-                  ),
-                ).then((_) {
-                  // 이동 후 현재 상태 업데이트
-                  if (!mounted) return;
-                  setState(() {
-                    pageTitle = pageName;
-                    pageContent = _getContentForPage(pageName);
-                    _titleController.text = pageTitle;
-                    _contentController.text = pageContent;
-                   });
-                });
-              }
-            }
-            ,
+              // 현재 포커스 해제 및 데이터 저장
+              FocusScope.of(context).unfocus();
+              _updatePageData(); // 현재 페이지 데이터 저장
+
+              // 다른 페이지로 이동
+              setState(() {
+                pageTitle = pageName;
+                pageContent = pageData[pageName] ?? ''; // 없는 데이터는 공백 처리
+                _titleController.text = pageTitle;
+                _contentController.text = pageContent;
+              });
+              widget.navigateToPage(pageName);
+            },
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 8),
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -547,6 +545,7 @@ class _DynamicPageState extends State<DynamicPage> {
           );
         },
       ),
+    ),
     );
   }
 // 페이지 제목을 기반으로 내용을 반환하는 함수
@@ -611,16 +610,23 @@ class _DynamicPageState extends State<DynamicPage> {
   Widget build(BuildContext context) {
     return GestureDetector(
         // 화면 아무 곳이나 터치하면 포커스 해제
-        onTap: () {
-      FocusScope.of(context).unfocus(); // 모든 FocusNode 해제
-    },
-    behavior: HitTestBehavior.opaque, // 투명 영역도 터치 이벤트 감지
-    child :Scaffold(
+        onTap: () => FocusScope.of(context).unfocus(), // 화면 클릭 시 모든 포커스 해제
+        child :Scaffold(
       body: Row(
         children: [
           Sidebar(
             recentPages: widget.recentPages, // 전달
-            navigateToPage: widget.navigateToPage, // 전달
+            navigateToPage:(pageName) {
+              FocusScope.of(context).unfocus(); // 사이드바에서 페이지 이동 시 포커스 해제
+              setState(() {
+                // 페이지 제목과 내용을 갱신
+                pageTitle = pageName;
+                pageContent = pageData[pageName] ?? '';
+                _titleController.text = pageTitle;
+                _contentController.text = pageContent;
+              });
+              widget.navigateToPage(pageName);
+            },
             addNewPage: widget.addNewPage,
           ),
           Expanded(
@@ -630,6 +636,7 @@ class _DynamicPageState extends State<DynamicPage> {
                   icon: Icon(Icons.arrow_back),
                   onPressed: () {
                     // 홈으로 이동
+                    FocusScope.of(context).unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
                     Navigator.popUntil(context, (route) => route.isFirst);
                   },
                 ),
@@ -641,26 +648,39 @@ class _DynamicPageState extends State<DynamicPage> {
                     height: 1,
                   ),
                 ),
-                title: TextField(
-                  controller: _titleController,
-                  focusNode: _titleFocusNode, // FocusNode 연결
-                  onChanged: (value) {
-                    setState(() {
-                      pageTitle = value;
-                    });
-                  },
-                  style: TextStyle(color: Colors.black, fontSize: 20),
-                  decoration: InputDecoration(
-                    hintText: '제목을 입력하세요',
-                    border: InputBorder.none,
+                title: GestureDetector(
+                  onTap: () => _handleDoubleClick(_titleFocusNode), // 더블클릭으로 포커스 해제
+
+                  child: TextField(
+                    controller: _titleController,
+                    focusNode: _titleFocusNode,
+                    onChanged: (value) {
+                      setState(() {
+                        pageTitle = value;
+                      });
+                    },
+                    onEditingComplete: () {
+                      _updatePageData(); // 제목 수정 완료 시 데이터 업데이트
+                      FocusScope.of(context).unfocus(); // 포커스 해제
+                    },
+                    style: TextStyle(color: Colors.black, fontSize: 20),
+                    decoration: InputDecoration(
+                      hintText: '제목을 입력하세요',
+                      border: InputBorder.none,
+                    ),
                   ),
                 ),
               ),
-              body: Column(
-                children: [
+              body: GestureDetector(
+                // 본문 영역에서 다른 곳 클릭 시 포커스 해제
+                onTap: () => FocusScope.of(context).unfocus(), // 다른 영역 클릭 시 모든 포커스 해제
+                child: Column(
+                  children: [
                   buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
                   Expanded(
-                    child : Stack(
+                    child: GestureDetector(
+                      onTap: () => _handleDoubleClick(_contentFocusNode), // 더블클릭으로 포커스 해제
+                      child : Stack(
                       children: [
                         Container(
                           color: Colors.white,
@@ -677,6 +697,10 @@ class _DynamicPageState extends State<DynamicPage> {
                                     setState(() {
                                       pageContent = value; // 내용 상태 업데이트
                                     });
+                                  },
+                                  onEditingComplete: () {
+                                    _updatePageData(); // 내용 편집 완료 시 데이터 업데이트
+                                    FocusScope.of(context).unfocus(); // 본문 포커스 해제
                                   },
                                   maxLines: null,
                                   style: TextStyle(fontSize: textSize),
@@ -696,9 +720,11 @@ class _DynamicPageState extends State<DynamicPage> {
                       ],
                     ),
                   ),
+                  ),
                 ],
               ),
             ),
+          ),
           ),
         ],
       ),

@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final newPageName = 'Page $pageCounter';
       pageCounter++;
       recentPages.insert(0, newPageName);
-      pageContents[newPageName] = '새 페이지의 내용입니다.';
+      pageContents[newPageName] = '';
     });
     navigateToPage(recentPages.first); // 새 페이지로 이동
   }
@@ -82,12 +82,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void navigateToPage(String pageName) {
+    FocusScope.of(context).unfocus(); // 현재 페이지 포커스 해제 및 데이터 저장
+    setState(() {
+      if (!pageContents.containsKey(pageName)) {
+        pageContents[pageName] = ''; // 새 페이지 내용 초기화
+      }
+    });
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DynamicPage(
           title: pageName,
-          content: pageContents[pageName] ?? '내용 없음',
+          content: pageContents[pageName] ?? '',
           recentPages: recentPages,
           navigateToPage: navigateToPage,
           onUpdate: (newTitle, newContent) {
