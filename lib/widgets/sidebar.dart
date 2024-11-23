@@ -129,7 +129,10 @@ class _SidebarState extends State<Sidebar> {
             label: '홈',
             onTap: () {
               // 홈 버튼 클릭 시 HomeScreen으로 이동
-              Navigator.popUntil(context, (route) => route.isFirst); // 스택을 초기화하고 첫 화면으로 돌아감);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
             },
           ),
           _buildSidebarItem(
