@@ -40,16 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
   int pageCounter = 1; // 페이지 숫자 관리
   ScrollController _recentPagesController = ScrollController();
 
-  void addNewPage(String pageName) {
+  void addNewPage() {
     setState(() {
-      // 최근 페이지 목록에 새 페이지 추가
-      recentPages.insert(0, pageName); // 가장 최근 페이지를 맨 위에 추가
-      if (recentPages.length > 4) {
-        recentPages.removeLast(); // 최근 페이지가 3개 이상이면 가장 오래된 페이지 삭제
-      }
+      final newPageName = 'Page $pageCounter';
+      pageCounter++;
+      recentPages.insert(0, newPageName);
+      pageContents[newPageName] = '';
     });
+    navigateToPage(recentPages.first); // 새 페이지로 이동
   }
-
   //setState(() {
   //       recentPages.add(pageName);
   //     });
@@ -79,24 +78,34 @@ class _HomeScreenState extends State<HomeScreen> {
       pageContents.remove(pageName); // 해당 페이지 내용 제거
       recentPages.remove(pageName); // 해당 페이지를 최근 페이지에서 제거
     });
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
-  navigateToPage(String pageName) {
+  void navigateToPage(String pageName) {
+    FocusScope.of(context).unfocus(); // 현재 페이지 포커스 해제 및 데이터 저장
+    setState(() {
+      if (!pageContents.containsKey(pageName)) {
+        pageContents[pageName] = ''; // 새 페이지 내용 초기화
+      }
+    });
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DynamicPage(
           title: pageName,
-          content: pageContents[pageName] ?? '내용 없음',
+          content: pageContents[pageName] ?? '',
           recentPages: recentPages,
-          // recentPages 추가
+          navigateToPage: navigateToPage,
           onUpdate: (newTitle, newContent) {
-            updatePage(pageName, newTitle, newContent); // 페이지 업데이트
+            setState(() {
+              final index = recentPages.indexOf(pageName);
+              if (index != -1) recentPages[index] = newTitle;
+              pageContents.remove(pageName);
+              pageContents[newTitle] = newContent;
+            });
           },
-          onDelete: () {
-            deletePage(pageName); // 페이지 삭제
-            Navigator.pop(context);
-          },
+          onDelete:() => deletePage(pageName),
+          addNewPage: addNewPage, // addNewPage 추가
         ),
       ),
     );
@@ -108,13 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Row(
         children: [
           Sidebar(
-            addNewPageCallback: (pageName) {
-              setState(() {
-                recentPages.insert(0, pageName); // 새 페이지 추가
-                pageContents[pageName] = "기본 내용입니다."; // 기본 내용 추가
-              });
-              navigateToPage(pageName);
-            }, //이거 없으면 페이지 추가시 바로 이동안되고 생성만 된다.
+            recentPages: recentPages,
+            navigateToPage: navigateToPage,
+            addNewPage: addNewPage,
           ),
           // Main Content
           Expanded(
