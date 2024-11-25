@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
+import 'package:html_editor/html_editor.dart';
 
 // 페이지별 제목과 내용을 관리하는 맵 추가
 Map<String, String> pageData = {
@@ -65,18 +66,18 @@ class _DynamicPageState extends State<DynamicPage> {
       }
     });
 
-    // 내용 포커스 해제 시 저장 처리   @@@ 중복 코드 삭제할 것
+    // 내용 포커스 해제 시 저장 처리
     _contentFocusNode.addListener(() {
       if (!_contentFocusNode.hasFocus) {
         _updatePageData();
       }
     });
-    // 내용 포커스 해제 시 저장
-    _contentFocusNode.addListener(() {
-      if (!_contentFocusNode.hasFocus) {
-        widget.onUpdate(pageTitle, pageContent);
-      }
-    });
+    // 내용 포커스 해제 시 저장 -> 이거 중복 코드 같아서 주석처리
+    // _contentFocusNode.addListener(() {
+    //   if (!_contentFocusNode.hasFocus) {
+    //     widget.onUpdate(pageTitle, pageContent);
+    //   }
+    // });
     pageTitle = widget.title; // 페이지 제목 초기화
     pageContent = widget.content; // 페이지 내용 초기화
     _titleController.text = pageTitle; // 제목 텍스트 필드
@@ -515,9 +516,61 @@ class _DynamicPageState extends State<DynamicPage> {
       ),
     );
   }
-// 페이지 제목을 기반으로 내용을 반환하는 함수
+  // 페이지 제목을 기반으로 내용을 반환하는 함수
   String _getContentForPage(String pageName) {
     return pageData[pageName]!;
+  }
+
+  TextSpan buildTextSpan() {
+    List<TextSpan> spans = [];
+    String text = pageContent; // 페이지 내용
+
+    int cursorPos = _contentController.selection.baseOffset;
+
+    // 텍스트를 커스터마이즈하여 TextSpan을 적용
+    for (int i = 0; i < text.length; i++) {
+      // 텍스트의 선택 영역만 볼드체로 변경
+      TextStyle textStyle = getTextStyle();
+      if (_contentController.selection.isCollapsed && i == cursorPos) {
+        // 커서 위치일 경우 스타일을 적용하지 않음
+        textStyle = textStyle.copyWith(fontWeight: FontWeight.normal);
+      }
+      spans.add(TextSpan(text: text[i], style: textStyle));
+    }
+
+    return TextSpan(style: TextStyle(fontSize: textSize), children: spans);
+  }
+
+  // 텍스트 스타일을 반환하는 함수 추가
+  TextStyle getTextStyle() {
+    return TextStyle(
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+      fontSize: textSize,
+    );
+  }
+
+  // 텍스트 변경 처리
+  void handleBoldText() {
+    final text = _contentController.text;
+    final selectedText = _contentController.selection.textInside(text);
+
+    // 선택된 텍스트가 있다면, 해당 텍스트만 볼드로 처리
+    if (selectedText.isNotEmpty) {
+      final String updatedText = text.replaceRange(
+          _contentController.selection.start,
+          _contentController.selection.end,
+          '*$selectedText*' // 선택된 텍스트에 '*'를 추가하여 마크업 처리 (예: 마크다운 방식)
+      );
+      _contentController.text = updatedText;
+      _contentController.selection = TextSelection.collapsed(offset: _contentController.selection.start);
+    } else {
+      // 선택된 텍스트가 없으면 현재 커서 위치에서 텍스트를 추가하거나 편집
+      setState(() {
+        isBold = !isBold;
+      });
+    }
   }
 
   Widget buildContent() {
@@ -546,7 +599,17 @@ class _DynamicPageState extends State<DynamicPage> {
       spans.add(TextSpan(text: text.substring(lastMatchEnd)));
     }
 
-    return RichText(text: TextSpan(style: TextStyle(fontSize: textSize), children: spans));
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+        // 텍스트 선택 상태에 따라 볼드체 업데이트
+        isBold = !isBold;
+        });
+      },
+      child: RichText(
+        text: buildTextSpan(),
+      ),
+    );
   }
 
   Widget buildCustomKeyboard() {
@@ -630,7 +693,7 @@ class _DynamicPageState extends State<DynamicPage> {
                                     });
                                   },
                                   maxLines: null,
-                                  style: TextStyle(fontSize: textSize),
+                                  // style: getTextStyle(),
                                   decoration: InputDecoration(
                                     hintText: "내용을 입력하세요",
                                     border: InputBorder.none,
