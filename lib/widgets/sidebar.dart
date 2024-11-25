@@ -6,9 +6,14 @@ import '../to_do.dart';
 import '../search.dart';
 
 class Sidebar extends StatefulWidget {
-  final Function(String) addNewPageCallback; // 콜백 추가
+  final List<String> recentPages; // 상위에서 전달받는 페이지 리스트
+  final Function(String) navigateToPage; // 페이지 이동 콜백
+  final VoidCallback addNewPage; // 새 페이지 추가 콜백
+
   const Sidebar({
-    this.addNewPageCallback = _defaultAddNewPageCallback, // 기본값 설정
+    required this.recentPages,
+    required this.navigateToPage,
+    required this.addNewPage,
     Key? key,
   }) : super(key: key);
 
@@ -32,7 +37,6 @@ class _SidebarState extends State<Sidebar> {
       pageNames.insert(0, newPageName);
       pageContents[newPageName] = "기본 내용입니다."; // 새 페이지에 기본 내용 추가
     });
-    widget.addNewPageCallback(newPageName);
   }
   // 페이지 제목 수정
   void updatePageTitle(String oldTitle, String newTitle) {
@@ -45,9 +49,6 @@ class _SidebarState extends State<Sidebar> {
         pageContents.remove(oldTitle); // 이전 제목 삭제
       }
     });
-
-    // 최근 페이지 목록도 업데이트
-    widget.addNewPageCallback(newTitle); // 제목이 변경되면 홈 화면의 목록도 업데이트
   }
 
   void deletePage(String pageName) {
@@ -88,6 +89,7 @@ class _SidebarState extends State<Sidebar> {
           title: pageName,
           content: pageContents[pageName] ?? '내용 없음',
           recentPages: pageNames, // recentPages 추가 (Sidebar의 pageNames 사용)
+          navigateToPage: navigateToPage, // 페이지 간 이동 콜백 전달
           onUpdate: (newTitle, newContent) {
             updatePageTitle(pageName, newTitle); // 페이지 제목 수정
             pageContents[newTitle] = newContent; // 내용 수정
@@ -96,6 +98,7 @@ class _SidebarState extends State<Sidebar> {
             deletePage(pageName); // 페이지 삭제
             Navigator.pop(context);
           },
+          addNewPage: widget.addNewPage, // addNewPage 추가
         ),
       ),
     );
@@ -136,7 +139,12 @@ class _SidebarState extends State<Sidebar> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SearchPage()),
+                MaterialPageRoute(
+                    builder: (context) => SearchPage(
+                      recentPages: widget.recentPages,
+                      navigateToPage: widget.navigateToPage,
+                      addNewPage: widget.addNewPage,
+                )),
               );
             },
           ),
@@ -146,7 +154,11 @@ class _SidebarState extends State<Sidebar> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CalenderPage()),
+                MaterialPageRoute(builder: (context) => CalendarPage(
+                  recentPages: widget.recentPages,
+                  navigateToPage: widget.navigateToPage,
+                  addNewPage: widget.addNewPage,
+                )),
               );
             },
           ),
@@ -157,7 +169,12 @@ class _SidebarState extends State<Sidebar> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ToDoPage()),
+                MaterialPageRoute(
+                    builder: (context) => ToDoPage(
+                  recentPages: widget.recentPages,
+                  navigateToPage: widget.navigateToPage,
+                  addNewPage: widget.addNewPage,
+                )),
               );
             },
           ),
@@ -168,19 +185,20 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.add,
             label: '새 페이지',
-            onTap: addNewPage, // 새 페이지 추가 로직 호출
+            onTap: widget.addNewPage, // 새 페이지 추가 로직 호출
           ),
           Divider(),
           // 최근 페이지 목록을 최대 5개까지만 표시
           Container(
             height: 300,
             child: ListView.builder(
-              itemCount: pageNames.length > 5 ? 5 : pageNames.length,
+              itemCount: widget.recentPages.length,
               itemBuilder: (context, index) {
+                final pageName = widget.recentPages[index];
                 return _buildSidebarItem(
                   icon: Icons.description_outlined,
-                  label: pageNames[index],
-                  onTap: () => navigateToPage(pageNames[index]),
+                  label: pageName,
+                  onTap: () => widget.navigateToPage(pageName),
                 );
               },
             ),
