@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
+
 // 페이지별 제목과 내용을 관리하는 맵 추가
 Map<String, String> pageData = {
 };
@@ -9,9 +10,10 @@ class DynamicPage extends StatefulWidget {
   final String title;
   final String content;
   final List<String> recentPages; // 최근 페이지 목록
+
   final Function(String) navigateToPage;
-  final Function(String, String) onUpdate;
-  final Function() onDelete;
+  final Function(String, String) onUpdate; // 페이지 업데이트 함수
+  final Function() onDelete; // 페이지 삭제 함수
   final VoidCallback addNewPage; // 새 페이지 추가 콜백 추가
 
   DynamicPage({
@@ -28,6 +30,8 @@ class DynamicPage extends StatefulWidget {
 }
 
 class _DynamicPageState extends State<DynamicPage> {
+  int lastNumber = 0;
+
   bool isEditing = false;
   bool isKeyboardVisible = false;
   bool isBold = false;
@@ -48,8 +52,6 @@ class _DynamicPageState extends State<DynamicPage> {
   DateTime _focusedDay = DateTime.now();
   List<Map<String, dynamic>> todoList = [];
   final TextEditingController _todoController = TextEditingController();
-
-
 
   // 인라인 페이지 데이터 관리
   List<Map<String, String>> inlinePages = [];
@@ -74,7 +76,7 @@ class _DynamicPageState extends State<DynamicPage> {
       }
     });
 
-    // 내용 포커스 해제 시 저장 처리
+    // 내용 포커스 해제 시 저장 처리   @@@ 중복 코드 삭제할 것
     _contentFocusNode.addListener(() {
       if (!_contentFocusNode.hasFocus) {
         _updatePageData();
@@ -86,10 +88,10 @@ class _DynamicPageState extends State<DynamicPage> {
         widget.onUpdate(pageTitle, pageContent);
       }
     });
-    pageTitle = widget.title;
-    pageContent = widget.content;
-    _titleController.text = pageTitle;
-    _contentController.text = pageContent;
+    pageTitle = widget.title; // 페이지 제목 초기화
+    pageContent = widget.content; // 페이지 내용 초기화
+    _titleController.text = pageTitle; // 제목 텍스트 필드
+    _contentController.text = pageContent; // 내용 텍스트 필드
 
     // 페이지 진입 시 사이드바 자동 접기
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -269,8 +271,6 @@ class _DynamicPageState extends State<DynamicPage> {
     widget.onUpdate(pageTitle, pageContent);
   }
 
-
-
   /// 글머리 기호(`- `) 추가
   void insertBulletPoint() {
     final int cursorPos = _contentController.selection.base.offset;
@@ -288,7 +288,10 @@ class _DynamicPageState extends State<DynamicPage> {
   void insertNumberedList() {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
-    final String newText = oldText.substring(0, cursorPos) + '1. ' + oldText.substring(cursorPos);
+
+    lastNumber++;
+
+    final String newText = oldText.substring(0, cursorPos) + '$lastNumber. ' + oldText.substring(cursorPos);
 
     setState(() {
       _contentController.text = newText;
@@ -553,37 +556,19 @@ class _DynamicPageState extends State<DynamicPage> {
     return pageData[pageName]!;
   }
 
-
-
-
-
   Widget buildContent() {
-    final text = _contentController.text;
-    final regex = RegExp(r'\[(Inline Page \d+)\]');
-    final spans = <TextSpan>[];
-    int lastMatchEnd = 0;
+    TextStyle textStyle = TextStyle(
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+    );
 
-    for (final match in regex.allMatches(text)) {
-      if (match.start > lastMatchEnd) {
-        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
-      }
-
-      final pageTitle = match.group(1)!;
-      spans.add(
-        TextSpan(
-          text: pageTitle,
-          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
-        ),
-      );
-
-      lastMatchEnd = match.end;
-    }
-
-    if (lastMatchEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
-    }
-
-    return RichText(text: TextSpan(style: TextStyle(fontSize: textSize), children: spans));
+    return SingleChildScrollView(
+      child: Text(
+        _contentController.text,
+        style: textStyle,
+      ),
+    );
   }
 
   Widget buildCustomKeyboard() {
@@ -703,7 +688,12 @@ class _DynamicPageState extends State<DynamicPage> {
                                     FocusScope.of(context).unfocus(); // 본문 포커스 해제
                                   },
                                   maxLines: null,
-                                  style: TextStyle(fontSize: textSize),
+                                  style: TextStyle(
+                                    fontSize: textSize,
+                                    fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                                    fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+                                    decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: "내용을 입력하세요",
                                     border: InputBorder.none,
