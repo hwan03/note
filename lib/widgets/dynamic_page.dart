@@ -507,7 +507,7 @@ class _DynamicPageState extends State<DynamicPage> {
       FocusScope.of(context).unfocus();
     },
     child:Container(
-      height: 50,
+      height: 30,
       color: Colors.grey[300],
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -529,22 +529,46 @@ class _DynamicPageState extends State<DynamicPage> {
               });
               widget.navigateToPage(pageName);
             },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 8),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: pageName == pageTitle ? Colors.blue[50] : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.blueAccent),
-              ),
-              child: Text(
-                pageName,
-                style: TextStyle(
-                  color: pageName == pageTitle ? Colors.blue : Colors.black,
-                  fontWeight: FontWeight.bold,
+            child: Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 1), // 각 항목 간 여백
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: pageName == pageTitle ? Colors.white : Colors.blue[50],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(5),
+                    topRight: Radius.circular(5),
+                    bottomLeft: Radius.circular(0),
+                    bottomRight: Radius.circular(0),
+                  ),
+                  // border: Border.all(color: Colors.blueAccent),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        pageName,
+                        style: TextStyle(
+                          color: pageName == pageTitle ? Colors.blue : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10, // 텍스트 크기
+                        ),
+                        overflow: TextOverflow.ellipsis, // 말줄임표 처리
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+            )
           );
         },
       ),
