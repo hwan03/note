@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -79,12 +80,7 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   bool _isCreatingEvent = false; // true: 일정 작성 화면, false: 예정된 일정 화면
-
-  void _toggleScreen() {
-    setState(() {
-      _isCreatingEvent = !_isCreatingEvent;
-    });
-  }
+  bool _isEditing = false;
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
@@ -93,6 +89,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _selectedStartDateTime = DateTime.now();
   DateTime _selectedEndDateTime = DateTime.now();
   Map<String, dynamic>? _selectedTag; // 선택된 태그를 저장
+  Map<String, dynamic>? _editingEvent; // 수정 중인 이벤트를 저장하는 변수
 
   int _selectedTagIndex = 0; // 현재 선택된 태그 인덱스
 
@@ -112,6 +109,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     DateTime(2024, 11, 13): [0],
   };
 
+  late List<Map<String, dynamic>> _tags = [
+    {"name": "업무", "color": Color(0xFFFFC1C1)},
+  ];
+
   List<Map<String, dynamic>> _getEventsForDay(DateTime date) {
     final strippedDate = _stripTime(date);
     if (_dateIndex[strippedDate] != null) {
@@ -119,10 +120,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
     return [];
   }
-
-  late List<Map<String, dynamic>> _tags = [
-    {"name": "업무", "color": Color(0xFFFFC1C1)},
-  ];
 
   @override
   @override
@@ -306,7 +303,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       children: (limitedEvents).map((event) {
                                         if (event['tag'] != null) {
                                           // t
-
                                           return Padding(
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 2),
@@ -394,14 +390,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           size: 18,
                         ),
                         onPressed: () {
-                          setState(() {
-                            _selectedDate = date; // 선택된 날짜로 설정
-                            _selectedStartDateTime =
-                                date.add(Duration(hours: 9)); // 기본 시작 시간 설정
-                            _selectedEndDateTime =
-                                date.add(Duration(hours: 10)); // 기본 종료 시간 설정
-                            _toggleScreen(); // 화면 전환
-                          });
+                          setState(() {});
+                          createMode(
+                              selectedDate: date.add(Duration(hours: 9)));
                         },
                       ),
                     ],
@@ -435,11 +426,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ],
                       ),
                       child: Row(
-                        children: [
-                          // 태그 색상 표시
+                        children: [ // 태그 색상 표시q
                           Container(
                             width: 8,
-                            height: 80,
+                            height : 80,
                             decoration: BoxDecoration(
                               color: event['tag']['color'],
                               borderRadius: BorderRadius.only(
@@ -467,29 +457,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       ),
                                       Spacer(),
                                       IconButton(
-                                        icon: Icon(Icons.edit, color: Colors.grey, ),
+                                        icon: Icon(
+                                          Icons.edit,
+                                          color: Colors.grey,
+                                        ),
                                         onPressed: () {
-                                          _toggleScreen(); // 이전 화면으로 전환
+                                          editMode(selectedEvent: event);
                                         },
                                         padding: EdgeInsets.zero,
                                         constraints: BoxConstraints(),
                                         hoverColor: Colors.transparent,
-                                        highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
-                                        splashColor: Colors.transparent, // 스플래시 효과 제거
-
+                                        highlightColor: Colors.transparent,
+                                        // 클릭할 때 하이라이트 효과 제거
+                                        splashColor:
+                                            Colors.transparent, // 스플래시 효과 제거
                                       ),
-                                      SizedBox(width: 5,),
+                                      SizedBox(
+                                        width: 5,
+                                      ),
                                       IconButton(
-                                        icon: Icon(Icons.close_outlined, color: Colors.grey, ),
+                                        icon: Icon(
+                                          Icons.close_outlined,
+                                          color: Colors.grey,
+                                        ),
                                         onPressed: () {
-                                          _toggleScreen(); // 이전 화면으로 전환
+                                          int eventIndex =
+                                              _events.indexOf(event);
+                                          if (eventIndex != -1) {
+                                            _deleteEvent(eventIndex);
+                                          }
                                         },
                                         padding: EdgeInsets.zero,
                                         constraints: BoxConstraints(),
                                         hoverColor: Colors.transparent,
-                                        highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
-                                        splashColor: Colors.transparent, // 스플래시 효과 제거
-
+                                        highlightColor: Colors.transparent,
+                                        // 클릭할 때 하이라이트 효과 제거
+                                        splashColor:
+                                            Colors.transparent, // 스플래시 효과 제거
                                       ),
                                     ],
                                   ),
@@ -532,19 +536,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
           },
         ),
         Positioned(
-          bottom: -10 ,
+          bottom: -10,
           right: -10,
           child: IconButton(
-            icon: Icon(Icons.add_circle_outline, color: Colors.grey, size: 30,),
+            icon: Icon(
+              Icons.add_circle_outline,
+              color: Colors.grey,
+              size: 30,
+            ),
             onPressed: () {
-              _selectedStartDateTime = DateTime.now(); // 시작 날짜를 오늘로 설정
-              _selectedEndDateTime = DateTime.now().add(Duration(hours: 1)); // 기본적으로 1시간 뒤를 종료 시간으로 설정
-              _toggleScreen(); // 이전 화면으로 전환
+              createMode(selectedDate: DateTime.now()); // 이전 화면으로 전환
             },
             hoverColor: Colors.transparent,
-            highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+            highlightColor: Colors.transparent,
+            // 클릭할 때 하이라이트 효과 제거
             splashColor: Colors.transparent, // 스플래시 효과 제거
-
           ),
         ),
       ],
@@ -588,6 +594,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Expanded(
                   child: TextField(
                     controller: _titleController,
+                    maxLength: 20,
+                    maxLines: 1,
+                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
                     decoration: InputDecoration(
                       labelText: '제목',
                       border: OutlineInputBorder(),
@@ -685,6 +694,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 controller: _descriptionController,
                 maxLines: null,
                 expands: true,
+                maxLength: 70,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
                 decoration: InputDecoration(
                   labelText: '상세 내용',
                   border: OutlineInputBorder(),
@@ -702,20 +713,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _selectedEndDateTime != null &&
                         _selectedTag != null &&
                         _titleController.text.isNotEmpty) {
-                      _addEvent(
-                        startDate: _selectedStartDateTime!,
-                        endDate: _selectedEndDateTime!,
-                        title: _titleController.text,
-                        description: _descriptionController.text,
-                        tag: _selectedTag!,
-                      );
+                      if (_isEditing) {
+                        // 수정 모드일 경우
+                        _editEvent(
+                          eventIndex: _events.indexOf(_editingEvent!),
+                          startDate: _selectedStartDateTime,
+                          endDate: _selectedEndDateTime,
+                          title: _titleController.text,
+                          description: _descriptionController.text,
+                          tag: _selectedTag!,
+                        );
+                      } else {
+                        // 작성 모드일 경우
+                        _addEvent(
+                          startDate: _selectedStartDateTime,
+                          endDate: _selectedEndDateTime,
+                          title: _titleController.text,
+                          description: _descriptionController.text,
+                          tag: _selectedTag!,
+                        );
+                      }
 
+                      // 필드 초기화 및 화면 전환
                       _titleController.clear();
                       _descriptionController.clear();
                       _toggleScreen();
-                      setState(() {
-                        _selectedTag = _tags[0];
-                      });
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('모든 필드를 입력해주세요!')),
@@ -758,9 +780,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _toggleScreen(); // 이전 화면으로 전환
           },
           hoverColor: Colors.transparent,
-          highlightColor: Colors.transparent, // 클릭할 때 하이라이트 효과 제거
+          highlightColor: Colors.transparent,
+          // 클릭할 때 하이라이트 효과 제거
           splashColor: Colors.transparent, // 스플래시 효과 제거
-
         ),
       ),
     ]);
@@ -829,11 +851,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildDateTimePickerField(
-      BuildContext context, {
-        required DateTime selectedDateTime,
-        required bool isStart,
-        required Color color,
-      }) {
+    BuildContext context, {
+    required DateTime selectedDateTime,
+    required bool isStart,
+    required Color color,
+  }) {
     return Stack(
       children: [
         ClipPath(
@@ -848,7 +870,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 children: [
                   Text(
                     '${selectedDateTime.month} 월 ${selectedDateTime.day} 일\n'
-                        '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
+                    '${selectedDateTime.hour}:${selectedDateTime.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(
                         fontSize: 20,
                         color: Colors.white,
@@ -1041,22 +1063,81 @@ class _CalendarScreenState extends State<CalendarScreen> {
       'endDate': endDate,
       'tag': tag,
     };
-
     setState(() {
       // 이벤트 리스트에 추가
       _events.add(newEvent);
-
       // 날짜 인덱스 업데이트
-      DateTime currentDate = startDate;
-      while (currentDate.isBefore(endDate) ||
-          currentDate.isAtSameMomentAs(endDate)) {
-        final strippedDate = _stripTime(currentDate);
-        if (_dateIndex[strippedDate] == null) {
-          _dateIndex[strippedDate] = [];
-        }
-        _dateIndex[strippedDate]!.add(_events.length - 1);
-        currentDate = currentDate.add(Duration(days: 1));
-      }
+      _updateIndex(
+          startDate: startDate,
+          endDate: endDate,
+          eventIndex: _events.length - 1,
+          isAdding: true);
+
+      // 이벤트 리스트 정렬
+      _sortEvents();
+    });
+    _saveData();
+  }
+
+  void _deleteEvent(int eventIndex) {
+    setState(() {
+      // 이벤트 삭제 전에 날짜 인덱스에서 제거
+      final eventToDelete = _events[eventIndex];
+      _updateIndex(
+        startDate: eventToDelete['startDate'],
+        endDate: eventToDelete['endDate'],
+        eventIndex: eventIndex,
+        isAdding: false,
+      );
+
+      // 이벤트 삭제
+      _events.removeAt(eventIndex);
+
+      // 날짜 인덱스 정리: 비어 있는 날짜 제거 및 인덱스 재정렬
+      _dateIndex.forEach((date, indices) {
+        _dateIndex[date] = indices
+            .where((index) => index != eventIndex)
+            .map((index) => index > eventIndex ? index - 1 : index)
+            .toList();
+      });
+      _dateIndex.removeWhere((_, indices) => indices.isEmpty);
+    });
+
+    _saveData();
+  }
+
+  void _editEvent({
+    required int eventIndex,
+    required String title,
+    required String description,
+    required DateTime startDate,
+    required DateTime endDate,
+    required Map<String, dynamic> tag,
+  }) {
+    final updatedEvent = {
+      'title': title,
+      'description': description,
+      'startDate': startDate,
+      'endDate': endDate,
+      'tag': tag,
+    };
+
+    setState(() {
+      // 기존 날짜 인덱스에서 이벤트 제거
+      final oldEvent = _events[eventIndex];
+      _updateIndex(
+          startDate: oldEvent['startDate'],
+          endDate: oldEvent['endDate'],
+          eventIndex: eventIndex,
+          isAdding: false);
+      // 이벤트 리스트 수정
+      _events[eventIndex] = updatedEvent;
+      // 새로운 날짜 인덱스에 이벤트 추가
+      _updateIndex(
+          startDate: startDate,
+          endDate: endDate,
+          eventIndex: eventIndex,
+          isAdding: true);
 
       // 이벤트 리스트 정렬
       _sortEvents();
@@ -1065,26 +1146,69 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _saveData();
   }
 
-  void _deleteEvent(int eventIndex) {
+  void _updateIndex({
+    required DateTime startDate,
+    required DateTime endDate,
+    required int eventIndex,
+    bool isAdding = true,
+  }) {
+    // 시작 날짜부터 종료 날짜까지 인덱스를 업데이트합니다.
+    DateTime currentDate = startDate;
+    while (currentDate.isBefore(endDate) ||
+        currentDate.isAtSameMomentAs(endDate)) {
+      final strippedDate = _stripTime(currentDate);
+
+      if (isAdding) {
+        // 이벤트 추가 시, 날짜에 해당 이벤트 인덱스를 추가
+        if (_dateIndex[strippedDate] == null) {
+          _dateIndex[strippedDate] = [];
+        }
+        _dateIndex[strippedDate]!.add(eventIndex);
+      } else {
+        // 이벤트 삭제 시, 날짜에서 해당 이벤트 인덱스를 제거
+        _dateIndex[strippedDate]?.remove(eventIndex);
+        if (_dateIndex[strippedDate]?.isEmpty ?? true) {
+          _dateIndex.remove(strippedDate);
+        }
+      }
+
+      currentDate = currentDate.add(Duration(days: 1));
+    }
+  }
+
+  void editMode({required Map<String, dynamic> selectedEvent}) {
     setState(() {
-      // 이벤트 삭제
-      _events.removeAt(eventIndex);
+      _isEditing = true;
+      _editingEvent = selectedEvent;
+      // 수정 모드로 넘어갈 때 초기값 설정
+      _selectedStartDateTime = _editingEvent?['startDate'];
+      _selectedEndDateTime = _editingEvent?['endDate'];
+      _titleController.text = _editingEvent?['title'];
+      _descriptionController.text = _editingEvent?['description'] ?? '';
+      _selectedTag = _editingEvent?['tag'];
 
-      // 날짜 인덱스 업데이트
-      _dateIndex.forEach((date, indices) {
-        indices.remove(eventIndex);
-      });
-
-      // 날짜 인덱스 정리: 비어 있는 날짜 제거 및 인덱스 재정렬
-      _dateIndex.removeWhere((_, indices) => indices.isEmpty);
-      _dateIndex.forEach((date, indices) {
-        _dateIndex[date] = indices
-            .map((index) => index > eventIndex ? index - 1 : index)
-            .toList();
-      });
+      _toggleScreen();
     });
+  }
 
-    _saveData();
+  void createMode({required DateTime selectedDate}) {
+    setState(() {
+      _isEditing = false; // 작성 모드로 설정
+
+      // 작성 모드로 넘어갈 때 초기값 설정
+      _selectedStartDateTime = selectedDate;
+      _selectedEndDateTime = selectedDate.add(Duration(hours: 1));
+      _titleController.clear();
+      _descriptionController.clear();
+      _selectedTag = _tags[0];
+      _toggleScreen();
+    });
+  }
+
+  void _toggleScreen() {
+    setState(() {
+      _isCreatingEvent = !_isCreatingEvent;
+    });
   }
 
   DateTime _stripTime(DateTime date) {
