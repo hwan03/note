@@ -7,11 +7,13 @@ import '../search.dart';
 
 class Sidebar extends StatefulWidget {
   final List<String> recentPages; // 상위에서 전달받는 페이지 리스트
+  final Map<String, List<Map<String, String>>> inlinePages;
   final Function(String) navigateToPage; // 페이지 이동 콜백
   final VoidCallback addNewPage; // 새 페이지 추가 콜백
 
   const Sidebar({
     required this.recentPages,
+    required this.inlinePages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -23,6 +25,9 @@ class Sidebar extends StatefulWidget {
   @override
   _SidebarState createState() => _SidebarState();
 }
+
+// 페이지별로 인라인 페이지를 표시하기 위한 상태 관리
+Map<String, bool> _expandedPages = {};
 
 class _SidebarState extends State<Sidebar> {
   bool isSidebarOpen = true;
@@ -36,6 +41,8 @@ class _SidebarState extends State<Sidebar> {
     setState(() {
       pageNames.insert(0, newPageName);
       pageContents[newPageName] = "기본 내용입니다."; // 새 페이지에 기본 내용 추가
+      widget.inlinePages[newPageName] = []; // 새 페이지의 인라인 페이지 초기화
+
     });
   }
   // 페이지 제목 수정
@@ -47,6 +54,8 @@ class _SidebarState extends State<Sidebar> {
         pageNames[index] = newTitle; // 제목 업데이트
         pageContents[newTitle] = pageContents[oldTitle] ?? '기본 내용입니다.'; // 내용 유지
         pageContents.remove(oldTitle); // 이전 제목 삭제
+        widget.inlinePages[newTitle] = widget.inlinePages[oldTitle] ?? []; // 인라인 페이지 이동
+        widget.inlinePages.remove(oldTitle); // 이전 인라인 페이지 제거
       }
     });
   }
@@ -55,6 +64,7 @@ class _SidebarState extends State<Sidebar> {
     setState(() {
       pageNames.remove(pageName);
       pageContents.remove(pageName);
+      widget.inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
     });
   }
 
@@ -82,6 +92,11 @@ class _SidebarState extends State<Sidebar> {
   //   });
   // }
   void navigateToPage(String pageName) {
+    // 페이지에 해당하는 인라인 페이지 데이터를 안전하게 가져오기
+    final inlinePageData = widget.inlinePages.containsKey(pageName)
+        ? widget.inlinePages[pageName]
+        : {}; // 키가 없을 경우 빈 Map으로 대체
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -89,6 +104,7 @@ class _SidebarState extends State<Sidebar> {
           title: pageName,
           content: pageContents[pageName] ?? '내용 없음',
           recentPages: pageNames, // recentPages 추가 (Sidebar의 pageNames 사용)
+          inlinePages: inlinePageData as Map<String, List<Map<String, String>>>, // 명시적으로 타입 캐스팅
           navigateToPage: navigateToPage, // 페이지 간 이동 콜백 전달
           onUpdate: (newTitle, newContent) {
             updatePageTitle(pageName, newTitle); // 페이지 제목 수정
@@ -106,6 +122,13 @@ class _SidebarState extends State<Sidebar> {
 
 
 
+  @override
+  void initState() {
+    super.initState();
+    for (var page in widget.recentPages) {
+      _expandedPages[page] = true;
+    }
+  }
 
 
 
@@ -144,6 +167,7 @@ class _SidebarState extends State<Sidebar> {
                 MaterialPageRoute(
                     builder: (context) => SearchPage(
                       recentPages: widget.recentPages,
+                      inlinePages: widget.inlinePages,
                       navigateToPage: widget.navigateToPage,
                       addNewPage: widget.addNewPage,
                 )),
@@ -158,6 +182,7 @@ class _SidebarState extends State<Sidebar> {
                 context,
                 MaterialPageRoute(builder: (context) => CalendarPage(
                   recentPages: widget.recentPages,
+                  inlinePages: widget.inlinePages,
                   navigateToPage: widget.navigateToPage,
                   addNewPage: widget.addNewPage,
                 )),
@@ -174,6 +199,7 @@ class _SidebarState extends State<Sidebar> {
                 MaterialPageRoute(
                     builder: (context) => ToDoPage(
                   recentPages: widget.recentPages,
+                  inlinePages: widget.inlinePages,
                   navigateToPage: widget.navigateToPage,
                   addNewPage: widget.addNewPage,
                 )),
@@ -190,22 +216,60 @@ class _SidebarState extends State<Sidebar> {
             onTap: widget.addNewPage, // 새 페이지 추가 로직 호출
           ),
           Divider(),
-          // 최근 페이지 목록을 최대 5개까지만 표시
           Container(
             height: 300,
             child: ListView.builder(
               itemCount: widget.recentPages.length,
               itemBuilder: (context, index) {
                 final pageName = widget.recentPages[index];
-                return _buildSidebarItem(
-                  icon: Icons.description_outlined,
-                  label: pageName,
-                  onTap: () => widget.navigateToPage(pageName),
+                final inlinePages = widget.inlinePages[pageName] ?? [];
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.description_outlined, color: Color(0xFF91918E)),
+                      title: isSidebarOpen ? Text(pageName) : null,
+                      onTap: () => widget.navigateToPage(pageName),
+                      trailing: isSidebarOpen && inlinePages.isNotEmpty
+                          ? IconButton(
+                        icon: Icon(
+                          _expandedPages[pageName] ?? true
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _expandedPages[pageName] = !_expandedPages[pageName]!;
+                          });
+                        },
+                      )
+                          : null,
+                    ),
+                    if (_expandedPages[pageName] ?? true && inlinePages.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(left: 16.0),
+                        child: Column(
+                          children: inlinePages.map((inlinePage) {
+                            return ListTile(
+                              leading: Icon(
+                                Icons.subdirectory_arrow_right,
+                                color: Color(0xFF91918E),
+                              ),
+                              title: isSidebarOpen ? Text(inlinePage['title'] ?? '') : null,
+                              onTap: () {
+                                widget.navigateToPage(inlinePage['title']!);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
           ),
-          Spacer(),
+          Spacer(), // 기존 Spacer 유지
           _buildSidebarItem(
             icon: Icons.delete,
             label: '휴지통',

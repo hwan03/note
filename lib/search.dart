@@ -3,11 +3,13 @@ import 'widgets/sidebar.dart'; // Sidebar 위젯을 가져옴
 
 class SearchPage extends StatefulWidget {
   final List<String> recentPages;
+  final Map<String, List<Map<String, String>>> inlinePages;
   final Function(String) navigateToPage;
   final VoidCallback addNewPage;
 
   const SearchPage({
     required this.recentPages,
+    required this.inlinePages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -57,6 +59,7 @@ class _SearchPageState extends State<SearchPage> {
           // 사이드바 유지
           Sidebar(
             recentPages: widget.recentPages,
+            inlinePages: widget.inlinePages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ),

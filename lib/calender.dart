@@ -10,11 +10,13 @@ import 'dart:convert'; // JSON 인코딩/디코딩을 위해 필요
 
 class CalendarPage extends StatefulWidget {
   final List<String> recentPages;
+  final Map<String, List<Map<String, String>>> inlinePages; // 추가
   final Function(String) navigateToPage;
   final VoidCallback addNewPage;
 
   const CalendarPage({
     required this.recentPages,
+    required this.inlinePages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -55,6 +57,7 @@ class _CalendarPageState extends State<CalendarPage> {
       child: Scaffold(
         body: CalendarScreen(
           recentPages: widget.recentPages,
+          inlinePages: widget.inlinePages,
           navigateToPage: widget.navigateToPage,
           addNewPage: widget.addNewPage,
         ),
@@ -64,11 +67,13 @@ class _CalendarPageState extends State<CalendarPage> {
 }
 class CalendarScreen extends StatefulWidget {
   final List<String> recentPages;
+  final Map<String, List<Map<String, String>>> inlinePages; // 추가
   final Function(String) navigateToPage;
   final VoidCallback addNewPage;
 
   const CalendarScreen({
     required this.recentPages,
+    required this.inlinePages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -209,6 +214,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         children: [
           Sidebar(
             recentPages: widget.recentPages,
+            inlinePages: widget.inlinePages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ),

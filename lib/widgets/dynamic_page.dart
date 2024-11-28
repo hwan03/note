@@ -9,18 +9,22 @@ class DynamicPage extends StatefulWidget {
   final String title;
   final String content;
   final List<String> recentPages; // 최근 페이지 목록
+  final Map<String, List<Map<String, String>>> inlinePages;
   final Function(String) navigateToPage;
   final Function(String, String) onUpdate;
   final Function() onDelete;
+  final String? parentPage; // 인라인 페이지 여부 확인
   final VoidCallback addNewPage; // 새 페이지 추가 콜백 추가
 
   DynamicPage({
     required this.title,
     required this.content,
     required this.recentPages,
+    required this.inlinePages,
     required this.navigateToPage,
     required this.onUpdate,
     required this.onDelete,
+    this.parentPage,
     required this.addNewPage, // 추가된 매개변수
   });
   @override
@@ -130,6 +134,9 @@ class _DynamicPageState extends State<DynamicPage> {
           final pageIndex = widget.recentPages.indexOf(widget.title);
           if (pageIndex != -1) {
             widget.recentPages[pageIndex] = pageTitle;
+          }// 인라인 페이지 제목 변경
+          if (widget.inlinePages.containsKey(widget.title)) {
+            widget.inlinePages[pageTitle] = widget.inlinePages.remove(widget.title) ?? [];
           }
         } else {
           // 제목이 같으면 내용만 업데이트
@@ -407,66 +414,97 @@ class _DynamicPageState extends State<DynamicPage> {
     );
   }
 
-  /// 인라인 페이지 추가 기능
   void addInlinePage() {
-    final int cursorPos = _contentController.selection.base.offset;
-    final String oldText = _contentController.text;
-    final String newPageTitle = 'Inline Page ${inlinePages.length + 1}';
-
-    inlinePages.add({'title': newPageTitle, 'content': ''});
-
-    final String newText = oldText.substring(0, cursorPos) + '[$newPageTitle]\n' + oldText.substring(cursorPos);
+    final newInlinePageTitle =
+        'Inline Page ${(widget.inlinePages[widget.title]?.length ?? 0) + 1}';
 
     setState(() {
-      _contentController.text = newText;
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + newPageTitle.length + 3);
-      pageContent = newText;
+      // 인라인 페이지 초기화 및 새 페이지 추가
+      widget.inlinePages.putIfAbsent(widget.title, () => []);
+      widget.inlinePages[widget.title]!.add({'title': newInlinePageTitle, 'content': ''});
+
+
     });
+
+    // 사이드바 업데이트를 위해 데이터 전달
+    widget.navigateToPage(newInlinePageTitle);
+
+    // 새 인라인 페이지 화면으로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DynamicPage(
+          title: newInlinePageTitle,
+          content: '',
+          recentPages: widget.recentPages,
+          inlinePages: widget.inlinePages,
+          navigateToPage: widget.navigateToPage,
+          onUpdate: (newTitle, newContent) {
+            final index = widget.inlinePages[widget.title]!.indexWhere(
+                  (page) => page['title'] == newInlinePageTitle,
+            );
+            if (index != -1) {
+              setState(() {
+                widget.inlinePages[widget.title]![index]['title'] = newTitle;
+                widget.inlinePages[widget.title]![index]['content'] = newContent;
+              });
+            }
+          },
+          onDelete: () {
+            setState(() {
+              widget.inlinePages[widget.title]?.removeWhere(
+                    (page) => page['title'] == newInlinePageTitle,
+              );
+            });
+            Navigator.pop(context);
+          },
+          addNewPage: widget.addNewPage,
+          parentPage: widget.title,
+        ),
+      ),
+    );
   }
+
+
   void navigateToInlinePage(String title) {
-    final pageData = inlinePages.firstWhere((page) => page['title'] == title);
+    // title에 해당하는 인라인 페이지 데이터 찾기
+    final inlinePageData = inlinePages.firstWhere(
+          (page) => page['title'] == title,
+      orElse: () => {'title': 'Unknown', 'content': 'No content'}, // 기본값 처리
+    );
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DynamicPage(
-          title: pageData['title']!, // 해당 인라인 페이지 제목
-          content: pageData['content']!, // 해당 인라인 페이지 내용
-          recentPages: inlinePages.map((page) => page['title']!).toList(), // 인라인 페이지들의 제목 리스트 전달
-          navigateToPage: (pageName) {
-            // 페이지 이동 처리
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DynamicPage(
-                  title: pageName,
-                  content: pageData[pageName] ?? '내용 없음',
-                  recentPages: widget.recentPages,
-                  navigateToPage: widget.navigateToPage,
-                  onUpdate: widget.onUpdate,
-                  onDelete: widget.onDelete,
-                  addNewPage: widget.addNewPage,
-                ),
-              ),
-            );
-          },
+          title: inlinePageData['title']!, // 인라인 페이지 제목
+          content: inlinePageData['content']!, // 인라인 페이지 내용
+          recentPages: widget.recentPages, // 기존 recentPages 사용
+          inlinePages: widget.inlinePages, // 인라인 페이지 목록 전달
+          navigateToPage: navigateToInlinePage, // 인라인 페이지 간 이동 처리
           onUpdate: (newTitle, newContent) {
             setState(() {
-              pageData['title'] = newTitle;
-              pageData['content'] = newContent;
+              // 인라인 페이지 데이터 업데이트
+              final pageIndex = inlinePages.indexWhere((page) => page['title'] == title);
+              if (pageIndex != -1) {
+                inlinePages[pageIndex]['title'] = newTitle;
+                inlinePages[pageIndex]['content'] = newContent;
+              }
             });
           },
           onDelete: () {
             setState(() {
-              inlinePages.remove(pageData);
+              // 인라인 페이지 삭제 처리
+              inlinePages.removeWhere((page) => page['title'] == title);
               Navigator.pop(context);
             });
           },
-          addNewPage: widget.addNewPage, // 필수 매개변수 전달
+          addNewPage: widget.addNewPage, // 기존 새 페이지 추가 콜백 유지
         ),
       ),
     );
   }
+
 
   void toggleCustomKeyboard() {
     setState(() {
@@ -616,6 +654,7 @@ class _DynamicPageState extends State<DynamicPage> {
         children: [
           Sidebar(
             recentPages: widget.recentPages, // 전달
+            inlinePages: widget.inlinePages, // 추가된 inlinePages 전달
             navigateToPage:(pageName) {
               FocusScope.of(context).unfocus(); // 사이드바에서 페이지 이동 시 포커스 해제
               setState(() {
@@ -670,6 +709,12 @@ class _DynamicPageState extends State<DynamicPage> {
                     ),
                   ),
                 ),
+                actions: [
+                  IconButton(
+                    icon: Icon(Icons.add),
+                    onPressed: addInlinePage, // 인라인 페이지 추가 버튼
+                  ),
+                ],
               ),
               body: GestureDetector(
                 // 본문 영역에서 다른 곳 클릭 시 포커스 해제

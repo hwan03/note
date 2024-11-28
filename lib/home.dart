@@ -37,8 +37,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<String> recentPages = []; // 최근 페이지 목록
   Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
+  Map<String, List<Map<String, String>>> inlinePages = {}; // 각 페이지별 인라인 페이지 관리
   int pageCounter = 1; // 페이지 숫자 관리
   ScrollController _recentPagesController = ScrollController();
+
+  Widget _buildLabeledBox({required String label, required Widget child}) {
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Color(0xFFF2F1EE)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.only(top: 24),
+          child: child,
+        ),
+        Positioned(
+          left: 16,
+          top: 0,
+          child: Container(
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   void addNewPage() {
     setState(() {
@@ -46,9 +76,11 @@ class _HomeScreenState extends State<HomeScreen> {
       pageCounter++;
       recentPages.insert(0, newPageName);
       pageContents[newPageName] = '';
+      inlinePages[newPageName] = []; // 새 페이지에 대한 인라인 페이지 초기화
     });
     navigateToPage(recentPages.first); // 새 페이지로 이동
   }
+
   //setState(() {
   //       recentPages.add(pageName);
   //     });
@@ -58,6 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // void main() {
   //   runApp(MyApp());
   // } 이거로 하면 최근 페이지부터 나오는거 아님
+
+  void addInlinePage(String parentPage) {
+    final inlinePageTitle = 'Inline Page ${inlinePages[parentPage]?.length ??
+        0 + 1}';
+    setState(() {
+      inlinePages[parentPage]?.add({'title': inlinePageTitle, 'content': ''});
+    });
+  }
 
   // 페이지 제목 수정 시 최근 페이지 목록과 동기화
   void updatePage(String oldTitle, String newTitle, String newContent) {
@@ -69,14 +109,19 @@ class _HomeScreenState extends State<HomeScreen> {
       if (index != -1) {
         recentPages[index] = newTitle; // 최근 페이지에서 제목 변경
       }
+
+      // 인라인 페이지 제목도 동기화
+      inlinePages[newTitle] = inlinePages.remove(oldTitle) ?? [];
     });
   }
 
-  // 페이지 삭제
+
+// 페이지 삭제
   void deletePage(String pageName) {
     setState(() {
       pageContents.remove(pageName); // 해당 페이지 내용 제거
       recentPages.remove(pageName); // 해당 페이지를 최근 페이지에서 제거
+      inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
     });
     Navigator.popUntil(context, (route) => route.isFirst);
   }
@@ -91,22 +136,31 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DynamicPage(
-          title: pageName,
-          content: pageContents[pageName] ?? '',
-          recentPages: recentPages,
-          navigateToPage: navigateToPage,
-          onUpdate: (newTitle, newContent) {
-            setState(() {
-              final index = recentPages.indexOf(pageName);
-              if (index != -1) recentPages[index] = newTitle;
-              pageContents.remove(pageName);
-              pageContents[newTitle] = newContent;
-            });
-          },
-          onDelete:() => deletePage(pageName),
-          addNewPage: addNewPage, // addNewPage 추가
-        ),
+        builder: (context) =>
+            DynamicPage(
+              title: pageName,
+              content: pageContents[pageName] ?? '',
+              recentPages: recentPages,
+              inlinePages: {
+                pageName: (inlinePages[pageName] as List<
+                    Map<String, String>>?) ?? [],
+              },
+              // 데이터 타입 변환
+              navigateToPage: navigateToPage,
+              onUpdate: (newTitle, newContent) {
+                setState(() {
+                  final index = recentPages.indexOf(pageName);
+                  if (index != -1) recentPages[index] = newTitle;
+                  pageContents.remove(pageName);
+                  pageContents[newTitle] = newContent;
+
+                  // 인라인 페이지 제목 동기화
+                  inlinePages[newTitle] = inlinePages.remove(pageName) ?? [];
+                });
+              },
+              onDelete: () => deletePage(pageName),
+              addNewPage: addNewPage, // addNewPage 추가
+            ),
       ),
     );
   }
@@ -118,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Sidebar(
             recentPages: recentPages,
+            inlinePages: inlinePages,
             navigateToPage: navigateToPage,
             addNewPage: addNewPage,
           ),
@@ -146,45 +201,46 @@ class _HomeScreenState extends State<HomeScreen> {
                         return GestureDetector(
                           onTap: () => navigateToPage(pageName), // 페이지 선택 시 이동
                           child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Color(0xFFF2F1EE)),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              // padding: EdgeInsets.all(8),
-                              // padding: E
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(15),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Color(0xFFF2F1EE)),
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(15),
-                                      topRight: Radius.circular(15)),
-                                  color: Color(0xFFF2F1EE),
-                                ),
-                                alignment: Alignment.bottomLeft,
-                                child: Icon(Icons.description_outlined,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Color(0xFFF2F1EE)),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            // padding: EdgeInsets.all(8),
+                            // padding: E
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(15),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: Color(0xFFF2F1EE)),
+                                    borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(15),
+                                        topRight: Radius.circular(15)),
+                                    color: Color(0xFFF2F1EE),
+                                  ),
+                                  alignment: Alignment.bottomLeft,
+                                  child: Icon(Icons.description_outlined,
                                     size: 40, color: Color(0xFF91918E),),
 
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(15),
-                                child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        recentPages[index],
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      Text('2024.01.15'),
-                                    ]),
-                              )
-                            ],
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(15),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          recentPages[index],
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        Text('2024.01.15'),
+                                      ]),
+                                )
+                              ],
                             ),
                           ),
                         );
@@ -204,7 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               margin: EdgeInsets.only(bottom: 16), // 추가된 부분
                               padding: EdgeInsets.all(16), // 추가된 부분
                               child: Center(
-                                child: SummaryChart(toDoData: context.watch<ToDoData>()),
+                                child: SummaryChart(
+                                    toDoData: context.watch<ToDoData>()),
                               ),
                             ),
                           ),
@@ -255,35 +312,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildLabeledBox({required String label, required Widget child}) {
-    return Stack(
-      children: [
-        Container(
-          margin: EdgeInsets.only(top: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Color(0xFFF2F1EE)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: EdgeInsets.only(top: 24),
-          child: child,
-        ),
-        Positioned(
-          left: 16,
-          top: 0,
-          child: Container(
-            color: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
