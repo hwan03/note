@@ -84,6 +84,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
+  final ScrollController _scrollController = ScrollController(); // 스크롤 컨트롤러
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   DateTime _selectedStartDateTime = DateTime.now();
@@ -92,6 +94,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<String, dynamic>? _editingEvent; // 수정 중인 이벤트를 저장하는 변수
 
   int _selectedTagIndex = 0; // 현재 선택된 태그 인덱스
+
+
+
 
   List<Map<String, dynamic>> _events = [
     {
@@ -323,9 +328,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               calendarStyle: CalendarStyle(
                                 todayDecoration: BoxDecoration(),
                                 todayTextStyle: TextStyle(color: Colors.black),
-                                selectedDecoration: BoxDecoration(),
-                                selectedTextStyle:
-                                    TextStyle(color: Colors.black),
                               ),
                             ),
                           )
@@ -425,108 +427,111 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ],
                       ),
-                      child: Row(
-                        children: [ // 태그 색상 표시q
-                          Container(
-                            width: 8,
-                            height : 80,
-                            decoration: BoxDecoration(
-                              color: event['tag']['color'],
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                bottomLeft: Radius.circular(12),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [ // 태그 색상 표시q
+                            Container(
+                              width: 8,
+                              decoration: BoxDecoration(
+                                color: event['tag']['color'],
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  bottomLeft: Radius.circular(12),
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 일정 제목
-                                  Row(
-                                    children: [
-                                      Text(
-                                        event['title'],
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 일정 제목
+                                    Row(
+                                      children: [
+                                        Text(
+                                          event['title'],
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
                                         ),
-                                      ),
-                                      Spacer(),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.edit,
-                                          color: Colors.grey,
+                                        Spacer(),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.edit,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: () {
+                                            editMode(selectedEvent: event);
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: BoxConstraints(),
+                                          hoverColor: Colors.transparent,
+                                          highlightColor: Colors.transparent,
+                                          // 클릭할 때 하이라이트 효과 제거
+                                          splashColor:
+                                          Colors.transparent, // 스플래시 효과 제거
                                         ),
-                                        onPressed: () {
-                                          editMode(selectedEvent: event);
-                                        },
-                                        padding: EdgeInsets.zero,
-                                        constraints: BoxConstraints(),
-                                        hoverColor: Colors.transparent,
-                                        highlightColor: Colors.transparent,
-                                        // 클릭할 때 하이라이트 효과 제거
-                                        splashColor:
-                                            Colors.transparent, // 스플래시 효과 제거
-                                      ),
-                                      SizedBox(
-                                        width: 5,
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.close_outlined,
-                                          color: Colors.grey,
+                                        SizedBox(
+                                          width: 5,
                                         ),
-                                        onPressed: () {
-                                          int eventIndex =
-                                              _events.indexOf(event);
-                                          if (eventIndex != -1) {
-                                            _deleteEvent(eventIndex);
-                                          }
-                                        },
-                                        padding: EdgeInsets.zero,
-                                        constraints: BoxConstraints(),
-                                        hoverColor: Colors.transparent,
-                                        highlightColor: Colors.transparent,
-                                        // 클릭할 때 하이라이트 효과 제거
-                                        splashColor:
-                                            Colors.transparent, // 스플래시 효과 제거
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 4),
-                                  // 일정 설명
-                                  Text(
-                                    event['description'] ?? '',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.close_outlined,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: () {
+                                            int eventIndex =
+                                            _events.indexOf(event);
+                                            if (eventIndex != -1) {
+                                              _deleteEvent(eventIndex);
+                                            }
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: BoxConstraints(),
+                                          hoverColor: Colors.transparent,
+                                          highlightColor: Colors.transparent,
+                                          // 클릭할 때 하이라이트 효과 제거
+                                          splashColor:
+                                          Colors.transparent, // 스플래시 효과 제거
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  // 시작 시간 - 종료 시간
-                                  Row(
-                                    children: [
-                                      Icon(Icons.access_time,
-                                          size: 14, color: Colors.grey),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
+                                    SizedBox(height: 4),
+                                    // 일정 설명
+                                    Text(
+                                      event['description'] ?? '',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    // 시작 시간 - 종료 시간
+                                    Row(
+                                      children: [
+                                        Icon(Icons.access_time,
+                                            size: 14, color: Colors.grey),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+
                       ),
                     ),
                   );
