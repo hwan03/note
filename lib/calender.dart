@@ -117,6 +117,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     {"name": "업무", "color": Color(0xFFFFC1C1)},
   ];
 
+  Map<String, List<String>> tagEventIndex = {};
+
 
 
 List<String> _getEventsForDay(DateTime date) {
@@ -366,6 +368,43 @@ List<String> _getEventsForDay(DateTime date) {
   Widget _buildSchedule(BuildContext context) {
     // 날짜별로 정렬된 이벤트
     final sortedDates = _dateIndex.keys.toList()..sort();
+    if (sortedDates.isEmpty) {
+      return Stack(
+        children:[
+          Center(
+            child:
+            Text(
+              '일정이 없습니다.',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Positioned(
+          bottom: -10,
+          right: -10,
+          child: IconButton(
+            icon: Icon(
+              Icons.add_circle_outline,
+              color: Colors.grey,
+              size: 30,
+            ),
+            onPressed: () {
+              createMode(selectedDate: DateTime.now()); // 이전 화면으로 전환
+            },
+            hoverColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            // 클릭할 때 하이라이트 효과 제거
+            splashColor: Colors.transparent, // 스플래시 효과 제거
+          ),
+        ),
+        ]
+      );
+
+    }
+
     return Stack(
       children: [
         ListView.builder(
@@ -498,7 +537,35 @@ List<String> _getEventsForDay(DateTime date) {
                                           ),
                                           onPressed: () {
                                             if (_events.containsKey(eventId)) {
-                                              _deleteEvent(eventId: eventId);
+                                              showDialog(
+                                                context: context,
+                                                builder: (BuildContext context) {
+                                                  return AlertDialog(
+                                                    title: Text(
+                                                      '일정을 삭제하시겠습니까?',
+                                                      textAlign: TextAlign.center,
+                                                      style: TextStyle(fontSize: 18),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.of(context).pop(); // 팝업 닫기
+                                                        },
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            _deleteEvent(eventId: eventId); // 이벤트 삭제 함수 호출
+                                                          });
+                                                          Navigator.of(context).pop(); // 팝업 닫기
+                                                        },
+                                                        child: Text('확인'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
                                             }
                                           },
                                           padding: EdgeInsets.zero,
@@ -571,19 +638,18 @@ List<String> _getEventsForDay(DateTime date) {
       ],
     );
   }
-
-// 요일을 반환하는 함수
+  // 요일을 반환하는 함수
   String _getWeekday(DateTime date) {
     const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     return weekdays[date.weekday - 1];
   }
-
 // 시간 포맷팅 함수
   String _formatTime(DateTime date) {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
+
 
   Widget _buildEventEditor() {
     return Stack(children: [
@@ -695,8 +761,39 @@ List<String> _getEventsForDay(DateTime date) {
                     ),
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.grey),
-                      onPressed:
-                          _tags.length > 1 ? () => _deleteTag(index) : null,
+                      onPressed: _tags.length > 1
+                          ? () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('태그 삭제'),
+                              content:Text(
+                                '해당 태그를 삭제하시겠습니까?\n일정이 삭제됩니다!',
+                                textAlign: TextAlign.center, // 텍스트 가운데 정렬
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(); // 팝업 닫기
+                                  },
+                                  child: Text('취소'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _deleteTag(index); // 태그 삭제 함수 호출
+                                    });
+                                    Navigator.of(context).pop(); // 팝업 닫기
+                                  },
+                                  child: Text('확인'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
+                          : null,
                     ),
                   ],
                 );
@@ -985,9 +1082,18 @@ List<String> _getEventsForDay(DateTime date) {
 
   void _addTag() {
     setState(() {
-      int newIndex = _tags.length + 1;
+      int newIndex = 1;
+      String newTagName;
+
+      // 새로운 태그 이름이 기존 태그와 겹치지 않도록 찾기
+      do {
+        newTagName = "태그 $newIndex";
+        newIndex++;
+      } while (_tags.any((tag) => tag['name'] == newTagName));
+
+      // 중복되지 않는 태그 이름으로 새로운 태그 추가
       _tags.add({
-        "name": "태그 $newIndex",
+        "name": newTagName,
         "color": Colors.grey, // 기본 색상
       });
     });
