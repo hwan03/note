@@ -145,11 +145,11 @@ class _DynamicPageState extends State<DynamicPage> {
     }
   }
 
-  void _addTextItem() {
+  void _addTextField(Offset position) {
     setState(() {
       contentItems.add({
-        'type': 'text',
-        'controller': TextEditingController(),
+        'type': 'textField',
+        'position': position,
       });
     });
   }
@@ -164,6 +164,12 @@ class _DynamicPageState extends State<DynamicPage> {
         'controller': TextEditingController(),
         'focusNode': FocusNode(),
       });
+    });
+  }
+
+  void removeChecklistItem(int index) {
+    setState(() {
+      contentItems.removeAt(index);
     });
   }
 
@@ -762,9 +768,12 @@ class _DynamicPageState extends State<DynamicPage> {
                         child: GestureDetector(
                           // 본문 영역에서 다른 곳 클릭 시 포커스 해제
                           onTap: () {
-                            // FocusScope.of(context).unfocus(); // 모든 포커스 해제
-                            _addTextItem(); // 클릭 시 기본적으로 텍스트 추가
+                            FocusScope.of(context).unfocus(); // 모든 포커스 해제
+                            // _addTextItem(); // 클릭 시 기본적으로 텍스트 추가
                           }, // 다른 영역 클릭 시 모든 포커스 해제
+                          onTapDown: (TapDownDetails details) {
+                            _addTextField(details.localPosition); // Add TextField at tapped position
+                          },
                           child: Column(
                             children: [
                               buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
@@ -786,7 +795,6 @@ class _DynamicPageState extends State<DynamicPage> {
                                                 itemBuilder: (context, index) {
                                                   final item = contentItems[index];
                                                   if (item['type'] == 'text') {
-                                                    // 텍스트 항목
                                                     return TextField(
                                                       controller: item['controller'],
                                                       focusNode: item['focusNode'],
@@ -812,36 +820,39 @@ class _DynamicPageState extends State<DynamicPage> {
                                                       ),
                                                     );
                                                   } else if (item['type'] == 'checklist') {
-                                                    // 체크리스트 항목
                                                     return Row(
+                                                      mainAxisSize: MainAxisSize.min, // Ensure Row takes up minimum space
                                                       children: [
                                                         Checkbox(
                                                           value: item['checked'],
                                                           onChanged: (value) {
                                                             setState(() {
-                                                              item['checked'] = value;
+                                                            item['checked'] = value;
                                                             });
                                                           },
                                                         ),
-                                                        Expanded(
+                                                        SizedBox(
+                                                          width: 200, // Adjust as needed
                                                           child: TextField(
                                                             controller: item['controller'],
                                                             focusNode: item['focusNode'],
+                                                            decoration: InputDecoration(
+                                                              hintText: '항목 입력',
+                                                              // border: OutlineInputBorder(),
+                                                            ),
                                                             onChanged: (value) {
                                                               setState(() {
-                                                                item['value'] = value;
+                                                              item['value'] = value;
                                                               });
                                                             },
                                                             onEditingComplete: () {
-                                                              _updatePageData();
-                                                              FocusScope.of(context).unfocus();
+                                                            FocusScope.of(context).unfocus();
                                                             },
-                                                            maxLines: 1,
-                                                            decoration: InputDecoration(
-                                                              hintText: "항목 입력",
-                                                              border: InputBorder.none,
-                                                            ),
                                                           ),
+                                                        ),
+                                                        IconButton(
+                                                          icon: Icon(Icons.close),
+                                                          onPressed: () => removeChecklistItem(index), // Remove checklist item
                                                         ),
                                                       ],
                                                     );
