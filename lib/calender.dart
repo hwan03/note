@@ -6,7 +6,9 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+
 import 'dart:convert'; // JSON 인코딩/디코딩을 위해 필요
 
 class CalendarPage extends StatefulWidget {
@@ -20,7 +22,6 @@ class CalendarPage extends StatefulWidget {
     required this.addNewPage,
     Key? key,
   }) : super(key: key);
-
 
   @override
   _CalendarPageState createState() => _CalendarPageState();
@@ -63,6 +64,7 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 }
+
 class CalendarScreen extends StatefulWidget {
   final List<String> recentPages;
   final Function(String) navigateToPage;
@@ -74,54 +76,54 @@ class CalendarScreen extends StatefulWidget {
     required this.addNewPage,
     Key? key,
   }) : super(key: key);
+
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  final uuid = Uuid();
   bool _isCreatingEvent = false; // true: 일정 작성 화면, false: 예정된 일정 화면
   bool _isEditing = false;
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
-  final ScrollController _scrollController = ScrollController(); // 스크롤 컨트롤러
+  // final ScrollController _scrollController = ScrollController(); // 스크롤 컨트롤러
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   DateTime _selectedStartDateTime = DateTime.now();
   DateTime _selectedEndDateTime = DateTime.now();
   Map<String, dynamic>? _selectedTag; // 선택된 태그를 저장
-  Map<String, dynamic>? _editingEvent; // 수정 중인 이벤트를 저장하는 변수
-
+  late String _editingEventId;
   int _selectedTagIndex = 0; // 현재 선택된 태그 인덱스
+  Map<String, Map<String, dynamic>> _events = {
+    // "uuid_1234": {
+    //   'title': '회의',
+    //   'description': '프로젝트 진행 회의',
+    //   'startDate': DateTime(2024, 11, 11, 11, 11),
+    //   'endDate': DateTime(2024, 11, 13, 23, 11),
+    //   'tag': {'name': '업무', 'color': Color(0xFFFFC1C1)},
+    // },
+  };
 
-
-
-
-  List<Map<String, dynamic>> _events = [
-    {
-      'title': '회의',
-      'description': '프로젝트 진행 회의',
-      'startDate': DateTime(2024, 11, 11),
-      'endDate': DateTime(2024, 11, 13),
-      'tag': {'name': '업무', 'color': Color(0xFFFFC1C1)},
-    },
-  ];
-
-  Map<DateTime, List<int>> _dateIndex = {
-    DateTime(2024, 11, 11): [0], // 첫 번째 이벤트
-    DateTime(2024, 11, 12): [0],
-    DateTime(2024, 11, 13): [0],
+  Map<DateTime, List<String>> _dateIndex = {
+    // DateTime(2024, 11, 11): ["uuid-1234"], // 첫 번째 이벤트
+    // DateTime(2024, 11, 12): ["uuid-1234"],
+    // DateTime(2024, 11, 13): ["uuid-1234"],
   };
 
   late List<Map<String, dynamic>> _tags = [
     {"name": "업무", "color": Color(0xFFFFC1C1)},
   ];
 
-  List<Map<String, dynamic>> _getEventsForDay(DateTime date) {
+
+
+List<String> _getEventsForDay(DateTime date) {
     final strippedDate = _stripTime(date);
     if (_dateIndex[strippedDate] != null) {
-      return _dateIndex[strippedDate]!.map((index) => _events[index]).toList();
+      // 날짜 인덱스에서 이벤트 ID를 통해 이벤트 정보를 가져옵니다.
+      return _dateIndex[strippedDate]!.toList();
     }
     return [];
   }
@@ -283,7 +285,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 setState(() {
                                   _selectedDate = selectedDay;
                                   _focusedDate = focusedDay;
-                                  // print('Events for $selectedDay: ${_getEventsForDay(selectedDay)}');
                                 });
                               },
                               onPageChanged: (focusedDay) {
@@ -292,7 +293,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   _focusedDate = focusedDay; // 연/월 업데이트
                                 });
                               },
-                              eventLoader: (day) => _getEventsForDay(day),
+                              eventLoader: (day)  {
+                                // 이벤트 ID 리스트를 가져옴
+                                final eventIds = _getEventsForDay(day);
+
+                                // ID 리스트를 통해 실제 이벤트 객체 리스트로 변환
+                                return eventIds.map((id) => _events[id]!).toList();
+                              },
                               // 이벤트 로드 설정
                               calendarBuilders: CalendarBuilders(
                                 markerBuilder: (context, date, events) {
@@ -366,7 +373,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           itemCount: sortedDates.length,
           itemBuilder: (context, dateIndex) {
             final date = sortedDates[dateIndex];
-            final events = _getEventsForDay(date); // 해당 날짜의 이벤트 목록 가져오기
+            final eventIds = _getEventsForDay(date); // 해당 날짜의 이벤트 id 목록 가져오기
+            final events = eventIds.map((id) => _events[id]).toList();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -401,9 +409,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
                 // 해당 날짜의 이벤트 목록
-                ...events.map((event) {
-                  final eventStartDate = event['startDate'];
-                  final eventEndDate = event['endDate'];
+                ...eventIds.asMap().entries.map((entry) {
+                  final int index = entry.key;
+                  final String eventId = entry.value;
+                  final event = events[index];
+
+                  final eventStartDate = event?['startDate'];
+                  final eventEndDate = event?['endDate'];
                   final adjustedStart =
                       date.isAtSameMomentAs(_stripTime(eventStartDate))
                           ? eventStartDate
@@ -430,11 +442,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       child: IntrinsicHeight(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [ // 태그 색상 표시q
+                          children: [
+                            // 태그 색상 표시q
                             Container(
                               width: 8,
                               decoration: BoxDecoration(
-                                color: event['tag']['color'],
+                                color: event?['tag']['color'],
                                 borderRadius: BorderRadius.only(
                                   topLeft: Radius.circular(12),
                                   bottomLeft: Radius.circular(12),
@@ -451,7 +464,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     Row(
                                       children: [
                                         Text(
-                                          event['title'],
+                                          event?['title'],
                                           style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -465,7 +478,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                             color: Colors.grey,
                                           ),
                                           onPressed: () {
-                                            editMode(selectedEvent: event);
+                                            editMode( eventId: eventId);
                                           },
                                           padding: EdgeInsets.zero,
                                           constraints: BoxConstraints(),
@@ -473,7 +486,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                           highlightColor: Colors.transparent,
                                           // 클릭할 때 하이라이트 효과 제거
                                           splashColor:
-                                          Colors.transparent, // 스플래시 효과 제거
+                                              Colors.transparent, // 스플래시 효과 제거
                                         ),
                                         SizedBox(
                                           width: 5,
@@ -484,10 +497,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                             color: Colors.grey,
                                           ),
                                           onPressed: () {
-                                            int eventIndex =
-                                            _events.indexOf(event);
-                                            if (eventIndex != -1) {
-                                              _deleteEvent(eventIndex);
+                                            if (_events.containsKey(eventId)) {
+                                              _deleteEvent(eventId: eventId);
                                             }
                                           },
                                           padding: EdgeInsets.zero,
@@ -496,14 +507,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                           highlightColor: Colors.transparent,
                                           // 클릭할 때 하이라이트 효과 제거
                                           splashColor:
-                                          Colors.transparent, // 스플래시 효과 제거
+                                              Colors.transparent, // 스플래시 효과 제거
                                         ),
                                       ],
                                     ),
                                     SizedBox(height: 4),
                                     // 일정 설명
                                     Text(
-                                      event['description'] ?? '',
+                                      event?['description'] ?? '',
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey[600],
@@ -531,7 +542,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                           ],
                         ),
-
                       ),
                     ),
                   );
@@ -721,7 +731,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       if (_isEditing) {
                         // 수정 모드일 경우
                         _editEvent(
-                          eventIndex: _events.indexOf(_editingEvent!),
+                          eventId: _editingEventId,
                           startDate: _selectedStartDateTime,
                           endDate: _selectedEndDateTime,
                           title: _titleController.text,
@@ -738,7 +748,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           tag: _selectedTag!,
                         );
                       }
-
                       // 필드 초기화 및 화면 전환
                       _titleController.clear();
                       _descriptionController.clear();
@@ -927,7 +936,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _tags[index]['name'] = newName;
 
                   // _events 업데이트
-                  for (var event in _events) {
+                  for (var event in _events.values) {
                     if (event['tag']['name'] == oldName) {
                       event['tag']['name'] = newName;
                     }
@@ -958,7 +967,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _tags[index]['color'] = color;
 
                   // _events 업데이트
-                  for (var event in _events) {
+                  for (var event in _events.values) {
                     if (event['tag']['name'] == _tags[index]['name']) {
                       event['tag']['color'] = color;
                     }
@@ -1000,18 +1009,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await prefs.clear(); // 모든 저장 데이터를 삭제
 
     // 이벤트와 날짜 인덱스를 JSON으로 변환
-    final eventData = _events
-        .map((event) => {
-              'title': event['title'],
-              'description': event['description'],
-              'startDate': event['startDate'].toIso8601String(),
-              'endDate': event['endDate'].toIso8601String(),
-              'tag': {
-                'name': event['tag']['name'],
-                'color': event['tag']['color'].value,
-              },
-            })
-        .toList();
+    final eventData = _events.map((id, event) => MapEntry(
+          id,
+          {
+            'title': event['title'],
+            'description': event['description'],
+            'startDate': event['startDate'].toIso8601String(),
+            'endDate': event['endDate'].toIso8601String(),
+            'tag': {
+              'name': event['tag']['name'],
+              'color': event['tag']['color'].value,
+            },
+          },
+        ));
 
     final dateIndexData = _dateIndex
         .map((date, indices) => MapEntry(date.toIso8601String(), indices));
@@ -1028,29 +1038,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (eventData != null) {
       setState(() {
-        _events = (jsonDecode(eventData) as List<dynamic>).map((event) {
-          return {
-            'title': event['title'],
-            'description': event['description'],
-            'startDate': DateTime.parse(event['startDate']),
-            'endDate': DateTime.parse(event['endDate']),
-            'tag': {
-              'name': event['tag']['name'],
-              'color': Color(event['tag']['color']), // 정수에서 Color 객체로 복원
+        _events = (jsonDecode(eventData) as Map<String, dynamic>).map(
+          (id, event) => MapEntry(
+            id,
+            {
+              'title': event['title'],
+              'description': event['description'],
+              'startDate': DateTime.parse(event['startDate']),
+              'endDate': DateTime.parse(event['endDate']),
+              'tag': {
+                'name': event['tag']['name'],
+                'color': Color(event['tag']['color']),
+              },
             },
-          };
-        }).toList();
-      });
-    }
-
-    if (dateIndexData != null) {
-      setState(() {
-        _dateIndex = (jsonDecode(dateIndexData) as Map<String, dynamic>).map(
-          (key, value) {
-            return MapEntry(DateTime.parse(key), List<int>.from(value));
-          },
+          ),
         );
       });
+
+      if (dateIndexData != null) {
+        setState(() {
+          _dateIndex = (jsonDecode(dateIndexData) as Map<String, dynamic>).map(
+            (key, value) {
+              return MapEntry(DateTime.parse(key), List<String>.from(value));
+            },
+          );
+        });
+      }
     }
   }
 
@@ -1061,6 +1074,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     required DateTime endDate,
     required Map<String, dynamic> tag,
   }) {
+    final String newId = uuid.v4();
     final newEvent = {
       'title': title,
       'description': description,
@@ -1069,50 +1083,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
       'tag': tag,
     };
     setState(() {
-      // 이벤트 리스트에 추가
-      _events.add(newEvent);
+      _events[newId] = newEvent;
+
       // 날짜 인덱스 업데이트
       _updateIndex(
           startDate: startDate,
           endDate: endDate,
-          eventIndex: _events.length - 1,
+          eventId: newId,
           isAdding: true);
-
-      // 이벤트 리스트 정렬
-      _sortEvents();
     });
     _saveData();
   }
 
-  void _deleteEvent(int eventIndex) {
+  void _deleteEvent({required String eventId}) {
     setState(() {
-      // 이벤트 삭제 전에 날짜 인덱스에서 제거
-      final eventToDelete = _events[eventIndex];
+      // 이벤트 삭제 전에 날짜 인덱스에서 먼저 제거
+      final eventToDelete = _events[eventId];
+
       _updateIndex(
-        startDate: eventToDelete['startDate'],
-        endDate: eventToDelete['endDate'],
-        eventIndex: eventIndex,
-        isAdding: false,
-      );
-
+          startDate: eventToDelete?["startDate"],
+          endDate: eventToDelete?["endDate"],
+          eventId: eventId,
+          isAdding: false);
       // 이벤트 삭제
-      _events.removeAt(eventIndex);
-
-      // 날짜 인덱스 정리: 비어 있는 날짜 제거 및 인덱스 재정렬
-      _dateIndex.forEach((date, indices) {
-        _dateIndex[date] = indices
-            .where((index) => index != eventIndex)
-            .map((index) => index > eventIndex ? index - 1 : index)
-            .toList();
-      });
-      _dateIndex.removeWhere((_, indices) => indices.isEmpty);
+      _events.remove(eventId);
     });
 
     _saveData();
   }
 
   void _editEvent({
-    required int eventIndex,
+    required String eventId,
     required String title,
     required String description,
     required DateTime startDate,
@@ -1129,23 +1130,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     setState(() {
       // 기존 날짜 인덱스에서 이벤트 제거
-      final oldEvent = _events[eventIndex];
+      var oldEvent = _events[eventId];
       _updateIndex(
-          startDate: oldEvent['startDate'],
-          endDate: oldEvent['endDate'],
-          eventIndex: eventIndex,
+          startDate: oldEvent?["startDate"],
+          endDate: oldEvent?["endDate"],
+          eventId: eventId,
           isAdding: false);
-      // 이벤트 리스트 수정
-      _events[eventIndex] = updatedEvent;
-      // 새로운 날짜 인덱스에 이벤트 추가
+      _events[eventId] = updatedEvent;
       _updateIndex(
           startDate: startDate,
           endDate: endDate,
-          eventIndex: eventIndex,
+          eventId: eventId,
           isAdding: true);
-
-      // 이벤트 리스트 정렬
-      _sortEvents();
+      // 새로운 날짜 인덱스에 이벤트 추가
     });
 
     _saveData();
@@ -1154,8 +1151,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _updateIndex({
     required DateTime startDate,
     required DateTime endDate,
-    required int eventIndex,
-    bool isAdding = true,
+    required String eventId,
+    required bool isAdding,
   }) {
     // 시작 날짜부터 종료 날짜까지 인덱스를 업데이트합니다.
     DateTime currentDate = startDate;
@@ -1168,10 +1165,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (_dateIndex[strippedDate] == null) {
           _dateIndex[strippedDate] = [];
         }
-        _dateIndex[strippedDate]!.add(eventIndex);
+        _dateIndex[strippedDate]!.add(eventId);
       } else {
         // 이벤트 삭제 시, 날짜에서 해당 이벤트 인덱스를 제거
-        _dateIndex[strippedDate]?.remove(eventIndex);
+        _dateIndex[strippedDate]?.remove(eventId);
         if (_dateIndex[strippedDate]?.isEmpty ?? true) {
           _dateIndex.remove(strippedDate);
         }
@@ -1181,16 +1178,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void editMode({required Map<String, dynamic> selectedEvent}) {
+  void editMode({required String eventId}) {
     setState(() {
       _isEditing = true;
-      _editingEvent = selectedEvent;
+      _editingEventId = eventId;
+      final editingEvent = _events[_editingEventId];
+      print(editingEvent);
       // 수정 모드로 넘어갈 때 초기값 설정
-      _selectedStartDateTime = _editingEvent?['startDate'];
-      _selectedEndDateTime = _editingEvent?['endDate'];
-      _titleController.text = _editingEvent?['title'];
-      _descriptionController.text = _editingEvent?['description'] ?? '';
-      _selectedTag = _editingEvent?['tag'];
+      _selectedStartDateTime = editingEvent?['startDate'];
+      _selectedEndDateTime = editingEvent?['endDate'];
+      _titleController.text = editingEvent?['title'];
+      _descriptionController.text = editingEvent?['description'] ?? '';
+      _selectedTag = editingEvent?['tag'];
 
       _toggleScreen();
     });
@@ -1220,9 +1219,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateTime(date.year, date.month, date.day);
   }
 
-  void _sortEvents() {
-    _events.sort((a, b) => a['startDate'].compareTo(b['startDate']));
-  }
+// void _sortEvents() {
+//   _events.sort((a, b) => a['startDate'].compareTo(b['startDate']));
+// }
 }
 
 class ArrowClipper extends CustomClipper<Path> {
