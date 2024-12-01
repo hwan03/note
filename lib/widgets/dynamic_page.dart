@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+
 // 페이지별 제목과 내용을 관리하는 맵 추가
 Map<String, String> pageData = {
 };
@@ -82,14 +85,10 @@ class _DynamicPageState extends State<DynamicPage> {
     _contentFocusNode.addListener(() {
       if (!_contentFocusNode.hasFocus) {
         _updatePageData();
-      }
-    });
-    // 내용 포커스 해제 시 저장
-    _contentFocusNode.addListener(() {
-      if (!_contentFocusNode.hasFocus) {
         widget.onUpdate(pageTitle, pageContent);
       }
     });
+
     pageTitle = widget.title;
     pageContent = widget.content;
     _titleController.text = pageTitle;
@@ -271,14 +270,14 @@ class _DynamicPageState extends State<DynamicPage> {
     setState(() {
       // 기존 제목이 있으면 내용만 업데이트, 없으면 새 항목 추가
       pageData[pageTitle] = pageContent;
-});
+    });
 
     widget.onUpdate(pageTitle, pageContent);
   }
 
 
 
-  /// 글머리 기호(`- `) 추가
+  /// 글머리 기호(- ) 추가
   void insertBulletPoint() {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
@@ -291,7 +290,7 @@ class _DynamicPageState extends State<DynamicPage> {
     });
   }
 
-  /// 개요 번호(`1. `) 추가
+  /// 개요 번호(1. ) 추가
   void insertNumberedList() {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
@@ -537,53 +536,53 @@ class _DynamicPageState extends State<DynamicPage> {
   }
   Widget buildRecentPagesBar() {
     return GestureDetector(
-        // 페이지 리스트 영역 클릭 시 포커스 해제
-        onTap: () {
-      FocusScope.of(context).unfocus();
-    },
-    child:Container(
-      height: 50,
-      color: Colors.grey[300],
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: widget.recentPages.length,
-        itemBuilder: (context, index) {
-          final pageName = widget.recentPages[index];
-          return GestureDetector(
-            onTap: () {
-              // 현재 포커스 해제 및 데이터 저장
-              FocusScope.of(context).unfocus();
-              _updatePageData(); // 현재 페이지 데이터 저장
+      // 페이지 리스트 영역 클릭 시 포커스 해제
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child:Container(
+        height: 50,
+        color: Colors.grey[300],
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: widget.recentPages.length,
+          itemBuilder: (context, index) {
+            final pageName = widget.recentPages[index];
+            return GestureDetector(
+              onTap: () {
+                // 현재 포커스 해제 및 데이터 저장
+                FocusScope.of(context).unfocus();
+                _updatePageData(); // 현재 페이지 데이터 저장
 
-              // 다른 페이지로 이동
-              setState(() {
-                pageTitle = pageName;
-                pageContent = pageData[pageName] ?? ''; // 없는 데이터는 공백 처리
-                _titleController.text = pageTitle;
-                _contentController.text = pageContent;
-              });
-              widget.navigateToPage(pageName);
-            },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 8),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: pageName == pageTitle ? Colors.blue[50] : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.blueAccent),
-              ),
-              child: Text(
-                pageName,
-                style: TextStyle(
-                  color: pageName == pageTitle ? Colors.blue : Colors.black,
-                  fontWeight: FontWeight.bold,
+                // 다른 페이지로 이동
+                setState(() {
+                  pageTitle = pageName;
+                  pageContent = pageData[pageName] ?? ''; // 없는 데이터는 공백 처리
+                  _titleController.text = pageTitle;
+                  _contentController.text = pageContent;
+                });
+                widget.navigateToPage(pageName);
+              },
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: pageName == pageTitle ? Colors.blue[50] : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.blueAccent),
+                ),
+                child: Text(
+                  pageName,
+                  style: TextStyle(
+                    color: pageName == pageTitle ? Colors.blue : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 // 페이지 제목을 기반으로 내용을 반환하는 함수
@@ -647,133 +646,133 @@ class _DynamicPageState extends State<DynamicPage> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-        // 화면 아무 곳이나 터치하면 포커스 해제
+      // 화면 아무 곳이나 터치하면 포커스 해제
         onTap: () => FocusScope.of(context).unfocus(), // 화면 클릭 시 모든 포커스 해제
         child :Scaffold(
-      body: Row(
-        children: [
-          Sidebar(
-            recentPages: widget.recentPages, // 전달
-            inlinePages: widget.inlinePages, // 추가된 inlinePages 전달
-            navigateToPage:(pageName) {
-              FocusScope.of(context).unfocus(); // 사이드바에서 페이지 이동 시 포커스 해제
-              setState(() {
-                // 페이지 제목과 내용을 갱신
-                pageTitle = pageName;
-                pageContent = pageData[pageName] ?? '';
-                _titleController.text = pageTitle;
-                _contentController.text = pageContent;
-              });
-              widget.navigateToPage(pageName);
-            },
-            addNewPage: widget.addNewPage,
-          ),
-          Expanded(
-            child: Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back),
-                  onPressed: () {
-                    // 홈으로 이동
-                    FocusScope.of(context).unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  },
-                ),
-                backgroundColor: Colors.grey[200],
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(1),
-                  child: Container(
-                    color: Colors.grey[300],
-                    height: 1,
-                  ),
-                ),
-                title: GestureDetector(
-                  onTap: () => _handleDoubleClick(_titleFocusNode), // 더블클릭으로 포커스 해제
-
-                  child: TextField(
-                    controller: _titleController,
-                    focusNode: _titleFocusNode,
-                    onChanged: (value) {
-                      setState(() {
-                        pageTitle = value;
-                      });
-                    },
-                    onEditingComplete: () {
-                      _updatePageData(); // 제목 수정 완료 시 데이터 업데이트
-                      FocusScope.of(context).unfocus(); // 포커스 해제
-                    },
-                    style: TextStyle(color: Colors.black, fontSize: 20),
-                    decoration: InputDecoration(
-                      hintText: '제목을 입력하세요',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                actions: [
-                  IconButton(
-                    icon: Icon(Icons.add),
-                    onPressed: addInlinePage, // 인라인 페이지 추가 버튼
-                  ),
-                ],
+          body: Row(
+            children: [
+              Sidebar(
+                recentPages: widget.recentPages, // 전달
+                inlinePages: widget.inlinePages, // 추가된 inlinePages 전달
+                navigateToPage:(pageName) {
+                  FocusScope.of(context).unfocus(); // 사이드바에서 페이지 이동 시 포커스 해제
+                  setState(() {
+                    // 페이지 제목과 내용을 갱신
+                    pageTitle = pageName;
+                    pageContent = pageData[pageName] ?? '';
+                    _titleController.text = pageTitle;
+                    _contentController.text = pageContent;
+                  });
+                  widget.navigateToPage(pageName);
+                },
+                addNewPage: widget.addNewPage,
               ),
-              body: GestureDetector(
-                // 본문 영역에서 다른 곳 클릭 시 포커스 해제
-                onTap: () => FocusScope.of(context).unfocus(), // 다른 영역 클릭 시 모든 포커스 해제
-                child: Column(
-                  children: [
-                  buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _handleDoubleClick(_contentFocusNode), // 더블클릭으로 포커스 해제
-                      child : Stack(
+              Expanded(
+                child: Scaffold(
+                  appBar: AppBar(
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back),
+                      onPressed: () {
+                        // 홈으로 이동
+                        FocusScope.of(context).unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                      },
+                    ),
+                    backgroundColor: Colors.grey[200],
+                    bottom: PreferredSize(
+                      preferredSize: Size.fromHeight(1),
+                      child: Container(
+                        color: Colors.grey[300],
+                        height: 1,
+                      ),
+                    ),
+                    title: GestureDetector(
+                      onTap: () => _handleDoubleClick(_titleFocusNode), // 더블클릭으로 포커스 해제
+
+                      child: TextField(
+                        controller: _titleController,
+                        focusNode: _titleFocusNode,
+                        onChanged: (value) {
+                          setState(() {
+                            pageTitle = value;
+                          });
+                        },
+                        onEditingComplete: () {
+                          _updatePageData(); // 제목 수정 완료 시 데이터 업데이트
+                          FocusScope.of(context).unfocus(); // 포커스 해제
+                        },
+                        style: TextStyle(color: Colors.black, fontSize: 20),
+                        decoration: InputDecoration(
+                          hintText: '제목을 입력하세요',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: Icon(Icons.add),
+                        onPressed: addInlinePage, // 인라인 페이지 추가 버튼
+                      ),
+                    ],
+                  ),
+                  body: GestureDetector(
+                    // 본문 영역에서 다른 곳 클릭 시 포커스 해제
+                    onTap: () => FocusScope.of(context).unfocus(), // 다른 영역 클릭 시 모든 포커스 해제
+                    child: Column(
                       children: [
-                        Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              if (showCalendar) Expanded(child: buildCalendar()),
-                              if (showTodoList) Expanded(child: buildTodoList()),
-                              Expanded(
-                                child: TextField(
-                                  controller: _contentController,
-                                  focusNode: _contentFocusNode, // 내용 FocusNode 연결
-                                  onChanged: (value) {
-                                    setState(() {
-                                      pageContent = value; // 내용 상태 업데이트
-                                    });
-                                  },
-                                  onEditingComplete: () {
-                                    _updatePageData(); // 내용 편집 완료 시 데이터 업데이트
-                                    FocusScope.of(context).unfocus(); // 본문 포커스 해제
-                                  },
-                                  maxLines: null,
-                                  style: TextStyle(fontSize: textSize),
-                                  decoration: InputDecoration(
-                                    hintText: "내용을 입력하세요",
-                                    border: InputBorder.none,
+                        buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _handleDoubleClick(_contentFocusNode), // 더블클릭으로 포커스 해제
+                            child : Stack(
+                              children: [
+                                Container(
+                                  color: Colors.white,
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    children: [
+                                      if (showCalendar) Expanded(child: buildCalendar()),
+                                      if (showTodoList) Expanded(child: buildTodoList()),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _contentController,
+                                          focusNode: _contentFocusNode, // 내용 FocusNode 연결
+                                          onChanged: (value) {
+                                            setState(() {
+                                              pageContent = value; // 내용 상태 업데이트
+                                            });
+                                          },
+                                          onEditingComplete: () {
+                                            _updatePageData(); // 내용 편집 완료 시 데이터 업데이트
+                                            FocusScope.of(context).unfocus(); // 본문 포커스 해제
+                                          },
+                                          maxLines: null,
+                                          style: TextStyle(fontSize: textSize),
+                                          decoration: InputDecoration(
+                                            hintText: "내용을 입력하세요",
+                                            border: InputBorder.none,
+                                          ),
+                                        ),
+
+                                      ),
+
+                                      if (isKeyboardVisible) buildCustomKeyboard(),
+                                    ],
                                   ),
                                 ),
-
-                              ),
-
-                              if (isKeyboardVisible) buildCustomKeyboard(),
-                            ],
+                                buildNavigationBar(),
+                              ],
+                            ),
                           ),
                         ),
-                        buildNavigationBar(),
                       ],
                     ),
                   ),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-          ),
-        ],
-      ),
-    )
+        )
     );
   }
 }

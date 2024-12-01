@@ -73,24 +73,7 @@ class _SidebarState extends State<Sidebar> {
       isSidebarOpen = !isSidebarOpen;
     });
   }
-  // setState(() {
-  //   pageNames.add(newPageName); // 페이지 이름 추가
-  // });
 
-  // void updatePage(String pageName, String newTitle, String newContent) {
-  //   setState(() {
-  //     // 제목 또는 내용을 업데이트
-  //     if (pageContents.containsKey(pageName)) {
-  //       pageContents[pageName] = newContent;
-  //     }
-  //
-  //     // 제목 변경 시 순서도 업데이트
-  //     if (pageNames.contains(pageName)) {
-  //       int index = pageNames.indexOf(pageName);
-  //       pageNames[index] = newTitle;
-  //     }
-  //   });
-  // }
   void navigateToPage(String pageName) {
     // 페이지에 해당하는 인라인 페이지 데이터를 안전하게 가져오기
     final inlinePageData = widget.inlinePages.containsKey(pageName)
@@ -155,7 +138,10 @@ class _SidebarState extends State<Sidebar> {
             label: '홈',
             onTap: () {
               // 홈 버튼 클릭 시 HomeScreen으로 이동
-              Navigator.popUntil(context, (route) => route.isFirst); // 스택을 초기화하고 첫 화면으로 돌아감);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HomeScreen()),
+              );
             },
           ),
           _buildSidebarItem(
