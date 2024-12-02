@@ -1152,8 +1152,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _selectedTagIndex--;
       }
       // 태그와 연결된 모든 이벤트 삭제
-      if (tagEventIndex.containsKey(tagName)) {
-        final eventIds = tagEventIndex[tagName] ?? [];
+      if (tagEventIndex.containsKey(tagName)) {;
+        final eventIds = List<String>.from(tagEventIndex[tagName]!);
+
         for (String eventId in eventIds) {
           if (_events.containsKey(eventId)) {
             _deleteEvent(eventId: eventId);
