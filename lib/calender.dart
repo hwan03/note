@@ -88,6 +88,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
+
   // final ScrollController _scrollController = ScrollController(); // 스크롤 컨트롤러
 
   final TextEditingController _titleController = TextEditingController();
@@ -98,13 +99,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   late String _editingEventId;
   int _selectedTagIndex = 0; // 현재 선택된 태그 인덱스
   Map<String, Map<String, dynamic>> _events = {
-    // "uuid_1234": {
-    //   'title': '회의',
-    //   'description': '프로젝트 진행 회의',
-    //   'startDate': DateTime(2024, 11, 11, 11, 11),
-    //   'endDate': DateTime(2024, 11, 13, 23, 11),
-    //   'tag': {'name': '업무', 'color': Color(0xFFFFC1C1)},
-    // },
+    /*"uuid_1234": {
+      'title': '회의',
+      'description': '프로젝트 진행 회의',
+      'startDate': DateTime(2024, 11, 11, 11, 11),
+      'endDate': DateTime(2024, 11, 13, 23, 11),
+      'tag': {'name': '업무', 'color': Color(0xFFFFC1C1)},
+    },
+    */
   };
 
   Map<DateTime, List<String>> _dateIndex = {
@@ -117,9 +119,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     {"name": "업무", "color": Color(0xFFFFC1C1)},
   ];
 
+  Map<String, List<String>> tagEventIndex = {};
 
-
-List<String> _getEventsForDay(DateTime date) {
+  List<String> _getEventsForDay(DateTime date) {
     final strippedDate = _stripTime(date);
     if (_dateIndex[strippedDate] != null) {
       // 날짜 인덱스에서 이벤트 ID를 통해 이벤트 정보를 가져옵니다.
@@ -293,12 +295,14 @@ List<String> _getEventsForDay(DateTime date) {
                                   _focusedDate = focusedDay; // 연/월 업데이트
                                 });
                               },
-                              eventLoader: (day)  {
+                              eventLoader: (day) {
                                 // 이벤트 ID 리스트를 가져옴
                                 final eventIds = _getEventsForDay(day);
 
                                 // ID 리스트를 통해 실제 이벤트 객체 리스트로 변환
-                                return eventIds.map((id) => _events[id]!).toList();
+                                return eventIds
+                                    .map((id) => _events[id]!)
+                                    .toList();
                               },
                               // 이벤트 로드 설정
                               calendarBuilders: CalendarBuilders(
@@ -366,6 +370,39 @@ List<String> _getEventsForDay(DateTime date) {
   Widget _buildSchedule(BuildContext context) {
     // 날짜별로 정렬된 이벤트
     final sortedDates = _dateIndex.keys.toList()..sort();
+    if (sortedDates.isEmpty) {
+      return Stack(children: [
+        Center(
+          child: Text(
+            '일정이 없습니다.',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -10,
+          right: -10,
+          child: IconButton(
+            icon: Icon(
+              Icons.add_circle_outline,
+              color: Colors.grey,
+              size: 30,
+            ),
+            onPressed: () {
+              createMode(selectedDate: DateTime.now()); // 이전 화면으로 전환
+            },
+            hoverColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            // 클릭할 때 하이라이트 효과 제거
+            splashColor: Colors.transparent, // 스플래시 효과 제거
+          ),
+        ),
+      ]);
+    }
+
     return Stack(
       children: [
         ListView.builder(
@@ -478,7 +515,7 @@ List<String> _getEventsForDay(DateTime date) {
                                             color: Colors.grey,
                                           ),
                                           onPressed: () {
-                                            editMode( eventId: eventId);
+                                            editMode(eventId: eventId);
                                           },
                                           padding: EdgeInsets.zero,
                                           constraints: BoxConstraints(),
@@ -498,7 +535,42 @@ List<String> _getEventsForDay(DateTime date) {
                                           ),
                                           onPressed: () {
                                             if (_events.containsKey(eventId)) {
-                                              _deleteEvent(eventId: eventId);
+                                              showDialog(
+                                                context: context,
+                                                builder:
+                                                    (BuildContext context) {
+                                                  return AlertDialog(
+                                                    title: Text(
+                                                      '일정을 삭제하시겠습니까?',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                          fontSize: 18),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          Navigator.of(context)
+                                                              .pop(); // 팝업 닫기
+                                                        },
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            _deleteEvent(
+                                                                eventId:
+                                                                    eventId); // 이벤트 삭제 함수 호출
+                                                          });
+                                                          Navigator.of(context)
+                                                              .pop(); // 팝업 닫기
+                                                        },
+                                                        child: Text('확인'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
                                             }
                                           },
                                           padding: EdgeInsets.zero,
@@ -551,6 +623,25 @@ List<String> _getEventsForDay(DateTime date) {
           },
         ),
         Positioned(
+          top: -10,
+          right: -10,
+          child: DropdownButton<String>(
+            icon: Icon(Icons.bookmarks, color: Colors.grey),
+            items: _tags.map((tag) {
+              return DropdownMenuItem<String>(
+                value: tag['name'],
+                child: Text(tag['name']),
+              );
+            }).toList(),
+            onChanged: (String? value) {
+              setState(() {
+                // selectedTag = value; // 태그 선택
+              });
+            },
+            dropdownColor: Colors.white,
+          ),
+        ),
+        Positioned(
           bottom: -10,
           right: -10,
           child: IconButton(
@@ -572,7 +663,7 @@ List<String> _getEventsForDay(DateTime date) {
     );
   }
 
-// 요일을 반환하는 함수
+  // 요일을 반환하는 함수
   String _getWeekday(DateTime date) {
     const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     return weekdays[date.weekday - 1];
@@ -594,14 +685,14 @@ List<String> _getEventsForDay(DateTime date) {
           children: [
             // 일정 제목
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 GestureDetector(
-                  onDoubleTap: () =>
-                      _changeTagColor(_tags.indexOf(_selectedTag!)),
+                  onDoubleTap: _isEditing
+                      ? null
+                      : () => _changeTagColor(_tags.indexOf(_selectedTag!)),
                   child: CircleAvatar(
-                    backgroundColor: _selectedTag != null
-                        ? _selectedTag!['color']
-                        : Colors.grey,
+                    backgroundColor: _selectedTag!['color'],
                     radius: 8,
                   ),
                 ),
@@ -679,14 +770,17 @@ List<String> _getEventsForDay(DateTime date) {
                       },
                     ),
                     GestureDetector(
-                      onDoubleTap: () => _changeTagColor(index),
+                      onDoubleTap:
+                          _isEditing ? null : () => _changeTagColor(index),
                       child: CircleAvatar(
                           backgroundColor: _tags[index]['color'], radius: 8),
                     ),
                     SizedBox(width: 8),
                     Expanded(
                       child: GestureDetector(
-                        onDoubleTap: () => _editTagName(context, index),
+                        onDoubleTap: _isEditing
+                            ? null
+                            : () => _editTagName(context, index),
                         child: Text(
                           _tags[index]['name'],
                           style: TextStyle(fontSize: 16),
@@ -695,8 +789,39 @@ List<String> _getEventsForDay(DateTime date) {
                     ),
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.grey),
-                      onPressed:
-                          _tags.length > 1 ? () => _deleteTag(index) : null,
+                      onPressed: _tags.length > 1
+                          ? () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: Text(
+                                      '해당 태그를 삭제하시겠습니까?\n일정이 삭제됩니다!',
+                                      textAlign: TextAlign.center, // 텍스트 가운데 정렬
+                                      style: TextStyle(fontSize: 18),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop(); // 팝업 닫기
+                                        },
+                                        child: Text('취소'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _deleteTag(index); // 태그 삭제 함수 호출
+                                          });
+                                          Navigator.of(context).pop(); // 팝업 닫기
+                                        },
+                                        child: Text('확인'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          : null,
                     ),
                   ],
                 );
@@ -931,19 +1056,29 @@ List<String> _getEventsForDay(DateTime date) {
               onPressed: () {
                 setState(() {
                   String oldName = _tags[index]['name'];
-                  String newName = _editingController.text;
-
-                  _tags[index]['name'] = newName;
-
-                  // _events 업데이트
-                  for (var event in _events.values) {
-                    if (event['tag']['name'] == oldName) {
-                      event['tag']['name'] = newName;
+                  String newName = _editingController.text.trim();
+                  // 입력값이 없을 경우
+                  if (newName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('태그 이름을 입력해주세요!')),
+                    );
+                  } else if (_tags.any((tag) => tag['name'] == newName)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('이미 존재하는 태그 이름입니다!')),
+                    );
+                  } else {
+                    // 새로운 이름이 유효할 경우에만 저장
+                    _tags[index]['name'] = newName;
+                    // _events 업데이트
+                    for (var event in _events.values) {
+                      if (event['tag']['name'] == oldName) {
+                        event['tag']['name'] = newName;
+                      }
                     }
                   }
+                  _saveData(); // 저장
+                  Navigator.of(context).pop();
                 });
-                _saveData(); // 저장
-                Navigator.of(context).pop();
               },
               child: Text('저장'),
             ),
@@ -985,21 +1120,46 @@ List<String> _getEventsForDay(DateTime date) {
 
   void _addTag() {
     setState(() {
-      int newIndex = _tags.length + 1;
+      int newIndex = 1;
+      String newTagName;
+
+      // 새로운 태그 이름이 기존 태그와 겹치지 않도록 찾기
+      do {
+        newTagName = "태그 $newIndex";
+        newIndex++;
+      } while (_tags.any((tag) => tag['name'] == newTagName));
+
+      // 중복되지 않는 태그 이름으로 새로운 태그 추가
       _tags.add({
-        "name": "태그 $newIndex",
+        "name": newTagName,
         "color": Colors.grey, // 기본 색상
       });
+
+      // tagEventIndex에 새로운 태그 추가
+      tagEventIndex[newTagName] = [];
     });
   }
 
   void _deleteTag(int index) {
     setState(() {
+      final tagName = _tags[index]["name"];
+
       _tags.removeAt(index);
+
       if (_selectedTagIndex == index) {
         _selectedTagIndex = 0;
       } else if (_selectedTagIndex > index) {
         _selectedTagIndex--;
+      }
+      // 태그와 연결된 모든 이벤트 삭제
+      if (tagEventIndex.containsKey(tagName)) {
+        final eventIds = tagEventIndex[tagName] ?? [];
+        for (String eventId in eventIds) {
+          if (_events.containsKey(eventId)) {
+            _deleteEvent(eventId: eventId);
+          }
+        }
+        tagEventIndex.remove(tagName);
       }
     });
   }
@@ -1026,8 +1186,21 @@ List<String> _getEventsForDay(DateTime date) {
     final dateIndexData = _dateIndex
         .map((date, indices) => MapEntry(date.toIso8601String(), indices));
 
+    final tagData = _tags
+        .map((tag) => {
+              'name': tag['name'],
+              'color': tag['color'].value,
+            })
+        .toList();
+
+    final tagEventIndexData = tagEventIndex.map((tagName, eventIds) {
+      return MapEntry(tagName, eventIds);
+    });
+
     await prefs.setString('events', jsonEncode(eventData));
     await prefs.setString('dateIndex', jsonEncode(dateIndexData));
+    await prefs.setString('tags', jsonEncode(tagData));
+    await prefs.setString('tagEventIndex', jsonEncode(tagEventIndexData));
   }
 
   Future<void> _loadData() async {
@@ -1035,6 +1208,8 @@ List<String> _getEventsForDay(DateTime date) {
 
     final eventData = prefs.getString('events');
     final dateIndexData = prefs.getString('dateIndex');
+    final tagData = prefs.getString('tags');
+    final tagEventIndexData = prefs.getString('tagEventIndex');
 
     if (eventData != null) {
       setState(() {
@@ -1064,6 +1239,27 @@ List<String> _getEventsForDay(DateTime date) {
           );
         });
       }
+
+      if (tagData != null) {
+        setState(() {
+          _tags = (jsonDecode(tagData) as List<dynamic>).map((tag) {
+            return {
+              'name': tag['name'],
+              'color': Color(tag['color']),
+            };
+          }).toList();
+        });
+      }
+
+      if (tagEventIndexData != null) {
+        setState(() {
+          tagEventIndex =
+              (jsonDecode(tagEventIndexData) as Map<String, dynamic>)
+                  .map((tagName, eventIds) {
+            return MapEntry(tagName, List<String>.from(eventIds));
+          });
+        });
+      }
     }
   }
 
@@ -1084,13 +1280,16 @@ List<String> _getEventsForDay(DateTime date) {
     };
     setState(() {
       _events[newId] = newEvent;
+      // 태그-이벤트 매핑 업데이트
 
       // 날짜 인덱스 업데이트
       _updateIndex(
-          startDate: startDate,
-          endDate: endDate,
-          eventId: newId,
-          isAdding: true);
+        startDate: startDate,
+        endDate: endDate,
+        eventId: newId,
+        tagName: tag["name"],
+        isAdding: true,
+      );
     });
     _saveData();
   }
@@ -1104,6 +1303,7 @@ List<String> _getEventsForDay(DateTime date) {
           startDate: eventToDelete?["startDate"],
           endDate: eventToDelete?["endDate"],
           eventId: eventId,
+          tagName: eventToDelete?["tag"]["name"],
           isAdding: false);
       // 이벤트 삭제
       _events.remove(eventId);
@@ -1135,12 +1335,14 @@ List<String> _getEventsForDay(DateTime date) {
           startDate: oldEvent?["startDate"],
           endDate: oldEvent?["endDate"],
           eventId: eventId,
+          tagName: oldEvent?["tag"]["name"],
           isAdding: false);
       _events[eventId] = updatedEvent;
       _updateIndex(
           startDate: startDate,
           endDate: endDate,
           eventId: eventId,
+          tagName: tag["name"],
           isAdding: true);
       // 새로운 날짜 인덱스에 이벤트 추가
     });
@@ -1153,6 +1355,7 @@ List<String> _getEventsForDay(DateTime date) {
     required DateTime endDate,
     required String eventId,
     required bool isAdding,
+    required String tagName,
   }) {
     // 시작 날짜부터 종료 날짜까지 인덱스를 업데이트합니다.
     DateTime currentDate = startDate;
@@ -1166,11 +1369,19 @@ List<String> _getEventsForDay(DateTime date) {
           _dateIndex[strippedDate] = [];
         }
         _dateIndex[strippedDate]!.add(eventId);
+        //태그인덱스에서 id 추가
+        if (tagEventIndex.containsKey(tagName)) {
+          tagEventIndex[tagName]!.add(eventId);
+        }
       } else {
         // 이벤트 삭제 시, 날짜에서 해당 이벤트 인덱스를 제거
         _dateIndex[strippedDate]?.remove(eventId);
         if (_dateIndex[strippedDate]?.isEmpty ?? true) {
           _dateIndex.remove(strippedDate);
+        }
+        // 태그인덱스 에서 id 삭제
+        if (tagEventIndex.containsKey(tagName)) {
+          tagEventIndex[tagName]?.remove(eventId);
         }
       }
 
@@ -1183,7 +1394,6 @@ List<String> _getEventsForDay(DateTime date) {
       _isEditing = true;
       _editingEventId = eventId;
       final editingEvent = _events[_editingEventId];
-      print(editingEvent);
       // 수정 모드로 넘어갈 때 초기값 설정
       _selectedStartDateTime = editingEvent?['startDate'];
       _selectedEndDateTime = editingEvent?['endDate'];
