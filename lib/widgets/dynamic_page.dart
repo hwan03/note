@@ -100,7 +100,8 @@ class _DynamicPageState extends State<DynamicPage> {
   Future<void> _loadPages() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPages = prefs.getString('pages');
-    final savedInlinePages = prefs.getString('inlinePages'); // Inline Pages 로드
+    final savedInlinePages = prefs.getString('inlinePages');
+    final savedRecentPages = prefs.getStringList('recentPages');
 
     if (savedPages != null) {
       setState(() {
@@ -113,8 +114,8 @@ class _DynamicPageState extends State<DynamicPage> {
           json.decode(savedInlinePages ?? '{}').map(
                 (key, value) => MapEntry(key, List<Map<String, String>>.from(value)),
           ),
-        ); // 인라인 페이지 로드
-        recentPages = prefs.getStringList('recentPages') ?? [];
+        );
+        recentPages = savedRecentPages ?? [];
       });
     } else {
       recentPages = [];
@@ -139,8 +140,11 @@ class _DynamicPageState extends State<DynamicPage> {
   void _savePageData() {
     setState(() {
       pages[pageTitle] = {'content': pageContent, 'parent': widget.parentPage};
+      recentPages.remove(pageTitle);
+      recentPages.insert(0, pageTitle);
+      if (recentPages.length > 10) recentPages.removeLast();
     });
-    _savePages();
+    _savePages(); // SharedPreferences에 저장
   }
 
   @override
@@ -157,8 +161,8 @@ class _DynamicPageState extends State<DynamicPage> {
     FocusScope.of(context).unfocus();
     setState(() {
       pageTitle = pageName;
-      pageContent = pages[pageName]?['content'] ??
-          ''; // 데이터 없으면 기본값 처리 _titleController.text = pageTitle;
+      pageContent = pages[pageName]?['content'] ?? ''; // 데이터 없으면 기본값 처리
+      _titleController.text = pageTitle;
       _contentController.text = pageContent;
     });
     widget.navigateToPage(pageName);
@@ -177,8 +181,9 @@ class _DynamicPageState extends State<DynamicPage> {
   void _updatePageContent(String content) {
     setState(() {
       pageContent = content;
+      pages[pageTitle] = {'content': pageContent, 'parent': widget.parentPage};
     });
-    _savePageData();
+    _savePages(); // SharedPreferences에 즉시 저장
   }
 
   void _updatePageTitle(String newTitle) {
@@ -783,7 +788,11 @@ class _DynamicPageState extends State<DynamicPage> {
                       child: TextField(
                         controller: _titleController,
                         focusNode: _titleFocusNode,
-                        onChanged: (value) => _updatePageTitle(value),
+                        onChanged: (value) {
+                          // 제목이 변경될 때마다 데이터 업데이트 및 저장
+                          _updatePageTitle(value);
+                          _savePageData(); // 데이터 저장
+                        },
                         onEditingComplete: () {
                           // 제목 수정 완료 시 데이터 업데이트
                           FocusScope.of(context).unfocus(); // 포커스 해제
@@ -820,12 +829,10 @@ class _DynamicPageState extends State<DynamicPage> {
                                         Expanded(child: buildTodoList()),
                                       Expanded(
                                         child: TextField(
-                                          controller: TextEditingController(
-                                              text: widget.content),
+                                          controller: _contentController,
                                           focusNode: _contentFocusNode,
                                           // 내용 FocusNode 연결
-                                          onChanged: (value) =>
-                                              _updatePageContent(value),
+                                          onChanged: _updatePageContent,
                                           onEditingComplete: () {
                                             FocusScope.of(context)
                                                 .unfocus(); // 본문 포커스 해제

@@ -4,6 +4,8 @@ import '../home.dart';
 import '../widgets/dynamic_page.dart';
 import '../to_do.dart';
 import '../search.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class Sidebar extends StatefulWidget {
   final List<String> recentPages; // 상위에서 전달받는 페이지 리스트
@@ -36,15 +38,20 @@ class _SidebarState extends State<Sidebar> {
   int pageCounter = 1; // 페이지 숫자 관리
 
   void addNewPage() {
-    String newPageName = 'Page $pageCounter';
-    pageCounter++;
     setState(() {
+      final newPageName = 'Page ${pageCounter++}';
       pageNames.insert(0, newPageName);
-      pageContents[newPageName] = "기본 내용입니다."; // 새 페이지에 기본 내용 추가
-      widget.inlinePages[newPageName] = []; // 새 페이지의 인라인 페이지 초기화
+      pageContents[newPageName] = "기본 내용입니다.";
+      widget.inlinePages[newPageName] = [];
 
+      if (!widget.recentPages.contains(newPageName)) {
+        widget.recentPages.insert(0, newPageName);
+      }
     });
+    _savePages(); // SharedPreferences에 저장
+    navigateToPage(pageNames.first);
   }
+
   // 페이지 제목 수정
   void updatePageTitle(String oldTitle, String newTitle) {
     setState(() {
@@ -55,9 +62,10 @@ class _SidebarState extends State<Sidebar> {
         pageContents[newTitle] = pageContents[oldTitle] ?? '기본 내용입니다.'; // 내용 유지
         pageContents.remove(oldTitle); // 이전 제목 삭제
         widget.inlinePages[newTitle] = widget.inlinePages[oldTitle] ?? []; // 인라인 페이지 이동
-        widget.inlinePages.remove(oldTitle); // 이전 인라인 페이지 제거
+        widget.inlinePages[newTitle] = widget.inlinePages.remove(oldTitle) ?? []; // 인라인 페이지 이동
       }
     });
+    _savePages();
   }
 
   void deletePage(String pageName) {
@@ -66,6 +74,7 @@ class _SidebarState extends State<Sidebar> {
       pageContents.remove(pageName);
       widget.inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
     });
+    _savePages(); // SharedPreferences에 저장
   }
 
   void _toggleSidebar() {
@@ -86,9 +95,9 @@ class _SidebarState extends State<Sidebar> {
         builder: (context) => DynamicPage(
           title: pageName,
           content: pageContents[pageName] ?? '내용 없음',
-          recentPages: pageNames, // recentPages 추가 (Sidebar의 pageNames 사용)
-          inlinePages: inlinePageData as Map<String, List<Map<String, String>>>, // 명시적으로 타입 캐스팅
-          navigateToPage: navigateToPage, // 페이지 간 이동 콜백 전달
+          recentPages: widget.recentPages,
+          inlinePages: widget.inlinePages,
+          navigateToPage: widget.navigateToPage,
           onUpdate: (newTitle, newContent) {
             updatePageTitle(pageName, newTitle); // 페이지 제목 수정
             pageContents[newTitle] = newContent; // 내용 수정
@@ -108,12 +117,29 @@ class _SidebarState extends State<Sidebar> {
   @override
   void initState() {
     super.initState();
+    _loadPages();
     for (var page in widget.recentPages) {
       _expandedPages[page] = true;
     }
   }
 
+  Future<void> _loadPages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPages = prefs.getString('pages'); // 저장된 페이지 데이터
+    if (savedPages != null) {
+      setState(() {
+        final decodedPages = Map<String, String>.from(json.decode(savedPages));
+        pageNames = decodedPages.keys.toList(); // 페이지 이름 리스트
+        pageContents = decodedPages; // 페이지 내용
+        pageCounter = pageNames.length + 1; // 카운터 갱신
+      });
+    }
+  }
 
+  Future<void> _savePages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pages', json.encode(pageContents));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +225,7 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.add,
             label: '새 페이지',
-            onTap: widget.addNewPage, // 새 페이지 추가 로직 호출
+            onTap: addNewPage, // 새 페이지 추가 로직 호출
           ),
           Divider(),
           Container(
