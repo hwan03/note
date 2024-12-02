@@ -208,7 +208,7 @@ class _SidebarState extends State<Sidebar> {
               itemCount: widget.recentPages.length,
               itemBuilder: (context, index) {
                 final pageName = widget.recentPages[index];
-                final inlinePages = widget.inlinePages[pageName] ?? [];
+                final inlinePagesForPage = widget.inlinePages[pageName] ?? [];
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,39 +217,14 @@ class _SidebarState extends State<Sidebar> {
                       leading: Icon(Icons.description_outlined, color: Color(0xFF91918E)),
                       title: isSidebarOpen ? Text(pageName) : null,
                       onTap: () => widget.navigateToPage(pageName),
-                      trailing: isSidebarOpen && inlinePages.isNotEmpty
-                          ? IconButton(
-                        icon: Icon(
-                          _expandedPages[pageName] ?? true
-                              ? Icons.expand_less
-                              : Icons.expand_more,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _expandedPages[pageName] = !_expandedPages[pageName]!;
-                          });
-                        },
-                      )
-                          : null,
                     ),
-                    if (_expandedPages[pageName] ?? true && inlinePages.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(left: 16.0),
-                        child: Column(
-                          children: inlinePages.map((inlinePage) {
-                            return ListTile(
-                              leading: Icon(
-                                Icons.subdirectory_arrow_right,
-                                color: Color(0xFF91918E),
-                              ),
-                              title: isSidebarOpen ? Text(inlinePage['title'] ?? '') : null,
-                              onTap: () {
-                                widget.navigateToPage(inlinePage['title']!);
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      ),
+                    ...inlinePagesForPage.map((inlinePage) {
+                      return ListTile(
+                        leading: Icon(Icons.subdirectory_arrow_right),
+                        title: Text(inlinePage['title'] ?? ''),
+                        onTap: () => widget.navigateToPage(inlinePage['title']!),
+                      );
+                    }).toList(),
                   ],
                 );
               },

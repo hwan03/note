@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-
-// 페이지별 제목과 내용을 관리하는 맵 추가
-Map<String, String> pageData = {
-};
+import 'dart:convert';
 
 class DynamicPage extends StatefulWidget {
   final String title;
@@ -30,11 +26,22 @@ class DynamicPage extends StatefulWidget {
     this.parentPage,
     required this.addNewPage, // 추가된 매개변수
   });
+
   @override
   _DynamicPageState createState() => _DynamicPageState();
 }
 
 class _DynamicPageState extends State<DynamicPage> {
+  final List<Map<String, dynamic>> contentItems = [
+    {
+      'type': 'text',
+      'value': '',
+      'controller': TextEditingController(),
+      'focusNode': FocusNode()
+    },
+  ];
+  int lastNumber = 0;
+
   bool isEditing = false;
   bool isKeyboardVisible = false;
   bool isBold = false;
@@ -56,43 +63,28 @@ class _DynamicPageState extends State<DynamicPage> {
   List<Map<String, dynamic>> todoList = [];
   final TextEditingController _todoController = TextEditingController();
 
-
-
-  // 인라인 페이지 데이터 관리
-  List<Map<String, String>> inlinePages = [];
+  late List<String> recentPages;
+  Map<String, Map<String, dynamic>> pages = {}; // 모든 페이지를 관리
+  late Map<String, List<Map<String, String>>> inlinePages; // 내부 변수 선언
 
   // 텍스트 스타일 적용 함수
-  TextStyle _applyTextStyle() {
-    return TextStyle(
-      fontSize: textSize,
-      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
-      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
-    );
-  }
+  // TextStyle _applyTextStyle() {
+  //   return TextStyle(
+  //     fontSize: textSize,
+  //     fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+  //     fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+  //     decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+  //   );
+  // }
 
   @override
   void initState() {
     super.initState();
-    // 제목 포커스 해제 시 저장 처리
-    _titleFocusNode.addListener(() {
-      if (!_titleFocusNode.hasFocus) {
-        _updatePageData();
-      }
-    });
 
-    // 내용 포커스 해제 시 저장 처리
-    _contentFocusNode.addListener(() {
-      if (!_contentFocusNode.hasFocus) {
-        _updatePageData();
-        widget.onUpdate(pageTitle, pageContent);
-      }
-    });
-
-    pageTitle = widget.title;
-    pageContent = widget.content;
-    _titleController.text = pageTitle;
-    _contentController.text = pageContent;
+    pageTitle = widget.title; // 페이지 제목 초기화
+    pageContent = widget.content; // 페이지 내용 초기화
+    _titleController.text = pageTitle; // 제목 텍스트 필드
+    _contentController.text = pageContent; // 내용 텍스트 필드
 
     // 페이지 진입 시 사이드바 자동 접기
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -100,6 +92,55 @@ class _DynamicPageState extends State<DynamicPage> {
         isSidebarOpen = false;
       });
     });
+
+    inlinePages = Map.from(widget.inlinePages); // 초기화 시 복사
+    _loadPages();
+  }
+
+  Future<void> _loadPages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedPages = prefs.getString('pages');
+    final savedInlinePages = prefs.getString('inlinePages'); // Inline Pages 로드
+
+    if (savedPages != null) {
+      setState(() {
+        pages = Map<String, Map<String, dynamic>>.from(
+          json.decode(savedPages).map(
+                (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
+          ),
+        );
+        inlinePages = Map<String, List<Map<String, String>>>.from(
+          json.decode(savedInlinePages ?? '{}').map(
+                (key, value) => MapEntry(key, List<Map<String, String>>.from(value)),
+          ),
+        ); // 인라인 페이지 로드
+        recentPages = prefs.getStringList('recentPages') ?? [];
+      });
+    } else {
+      recentPages = [];
+      pages = {};
+      inlinePages = {};
+    }
+  }
+  void _updateRecentPages() {
+    setState(() {
+      recentPages.remove(pageTitle);
+      recentPages.insert(0, pageTitle);
+      if (recentPages.length > 10) recentPages.removeLast();
+      _savePages();
+    });
+  }
+  Future<void> _savePages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pages', json.encode(pages)); // 모든 페이지 데이터 저장
+    await prefs.setString('inlinePages', json.encode(inlinePages)); // 인라인 페이지 저장
+    await prefs.setStringList('recentPages', recentPages); // 최근 페이지 목록 저장
+  }
+  void _savePageData() {
+    setState(() {
+      pages[pageTitle] = {'content': pageContent, 'parent': widget.parentPage};
+    });
+    _savePages();
   }
 
   @override
@@ -112,6 +153,18 @@ class _DynamicPageState extends State<DynamicPage> {
     super.dispose();
   }
 
+  void navigateToPage(String pageName) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      pageTitle = pageName;
+      pageContent = pages[pageName]?['content'] ??
+          ''; // 데이터 없으면 기본값 처리 _titleController.text = pageTitle;
+      _contentController.text = pageContent;
+    });
+    widget.navigateToPage(pageName);
+    _savePageData(); // SharedPreferences에 저장
+  }
+
   void _handleDoubleClick(FocusNode focusNode) {
     // 포커스가 이미 활성화된 상태에서 더블클릭하면 포커스 해제
     if (focusNode.hasFocus) {
@@ -121,29 +174,53 @@ class _DynamicPageState extends State<DynamicPage> {
     }
   }
 
-  void _updatePageData() {
-    if (pageTitle.trim().isNotEmpty) {
-      setState(() {
-        // 제목 변경 시 기존 데이터 갱신
-        if (widget.title != pageTitle) {
-          final existingContent = pageData.remove(widget.title); // 기존 제목 데이터 제거
-          pageData[pageTitle] = existingContent ?? pageContent; // 새 제목으로 데이터 이동
+  void _updatePageContent(String content) {
+    setState(() {
+      pageContent = content;
+    });
+    _savePageData();
+  }
 
-          // recentPages에서도 제목 변경
-          final pageIndex = widget.recentPages.indexOf(widget.title);
-          if (pageIndex != -1) {
-            widget.recentPages[pageIndex] = pageTitle;
-          }// 인라인 페이지 제목 변경
-          if (widget.inlinePages.containsKey(widget.title)) {
-            widget.inlinePages[pageTitle] = widget.inlinePages.remove(widget.title) ?? [];
-          }
-        } else {
-          // 제목이 같으면 내용만 업데이트
-          pageData[pageTitle] = pageContent;
-        }
+  void _updatePageTitle(String newTitle) {
+    if (newTitle.trim().isEmpty) return;
+    setState(() {
+      if (newTitle != pageTitle) {
+        pages[newTitle] = pages.remove(pageTitle)!;
+        pageTitle = newTitle;
+      }
+    });
+    _savePages();
+  }
+
+  void _deletePage() {
+    setState(() {
+      pages.remove(pageTitle);
+      recentPages.remove(pageTitle);
+    });
+    _savePages();
+    Navigator.pop(context);
+  }
+
+  void _addTextItem() {
+    setState(() {
+      contentItems.add({
+        'type': 'text',
+        'controller': TextEditingController(),
       });
-      widget.onUpdate(pageTitle, pageContent); // 데이터 저장
-    }
+    });
+  }
+
+  // 체크리스트 추가 메서드
+  void addChecklistItem() {
+    setState(() {
+      contentItems.add({
+        'type': 'checklist',
+        'value': '',
+        'checked': false,
+        'controller': TextEditingController(),
+        'focusNode': FocusNode(),
+      });
+    });
   }
 
   void addTodoItem() {
@@ -165,12 +242,14 @@ class _DynamicPageState extends State<DynamicPage> {
       todoList.removeAt(index);
     });
   }
+
   void deletePage(String pageName) {
     setState(() {
       widget.recentPages.remove(pageName); // 페이지를 최근 목록에서 삭제
       widget.onDelete(); // 상위 콜백 호출
     });
   }
+
   Widget buildCalendar() {
     return TableCalendar(
       firstDay: DateTime.utc(2020, 1, 1),
@@ -224,7 +303,8 @@ class _DynamicPageState extends State<DynamicPage> {
                 title: Text(
                   item['task'],
                   style: TextStyle(
-                    decoration: item['completed'] ? TextDecoration.lineThrough : null,
+                    decoration:
+                        item['completed'] ? TextDecoration.lineThrough : null,
                   ),
                 ),
                 trailing: IconButton(
@@ -269,36 +349,42 @@ class _DynamicPageState extends State<DynamicPage> {
 
     setState(() {
       // 기존 제목이 있으면 내용만 업데이트, 없으면 새 항목 추가
-      pageData[pageTitle] = pageContent;
+      pages[pageTitle]?['content'] = pageContent;
     });
 
     widget.onUpdate(pageTitle, pageContent);
   }
 
-
-
-  /// 글머리 기호(- ) 추가
+  /// 글머리 기호(`- `) 추가
   void insertBulletPoint() {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
-    final String newText = oldText.substring(0, cursorPos) + '- ' + oldText.substring(cursorPos);
+    final String newText =
+        oldText.substring(0, cursorPos) + '- ' + oldText.substring(cursorPos);
 
     setState(() {
       _contentController.text = newText;
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + 2);
+      _contentController.selection =
+          TextSelection.collapsed(offset: cursorPos + 2);
       pageContent = newText;
     });
   }
 
-  /// 개요 번호(1. ) 추가
+  /// 개요 번호(`1. `) 추가
   void insertNumberedList() {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
-    final String newText = oldText.substring(0, cursorPos) + '1. ' + oldText.substring(cursorPos);
+
+    lastNumber++;
+
+    final String newText = oldText.substring(0, cursorPos) +
+        '$lastNumber. ' +
+        oldText.substring(cursorPos);
 
     setState(() {
       _contentController.text = newText;
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + 3);
+      _contentController.selection =
+          TextSelection.collapsed(offset: cursorPos + 3);
       pageContent = newText;
     });
   }
@@ -343,7 +429,7 @@ class _DynamicPageState extends State<DynamicPage> {
             ),
             IconButton(
               icon: Icon(Icons.checklist),
-              onPressed: toggleTodoList,
+              onPressed: addChecklistItem,
             ),
             IconButton(
               icon: Icon(Icons.add),
@@ -397,7 +483,9 @@ class _DynamicPageState extends State<DynamicPage> {
             ),
             IconButton(
               icon: Icon(isEditing ? Icons.check : Icons.edit),
-              onPressed: isEditing ? saveChanges : () => setState(() => isEditing = true),
+              onPressed: isEditing
+                  ? saveChanges
+                  : () => setState(() => isEditing = true),
             ),
             IconButton(
               icon: Icon(Icons.keyboard),
@@ -414,91 +502,49 @@ class _DynamicPageState extends State<DynamicPage> {
   }
 
   void addInlinePage() {
-    final newInlinePageTitle =
-        'Inline Page ${(widget.inlinePages[widget.title]?.length ?? 0) + 1}';
+    final inlinePageTitle = 'Inline Page ${(inlinePages[pageTitle]?.length ?? 0) + 1}';
 
     setState(() {
-      // 인라인 페이지 초기화 및 새 페이지 추가
-      widget.inlinePages.putIfAbsent(widget.title, () => []);
-      widget.inlinePages[widget.title]!.add({'title': newInlinePageTitle, 'content': ''});
-
-
+      inlinePages.putIfAbsent(pageTitle, () => []); // 부모 페이지에 인라인 페이지 초기화
+      inlinePages[pageTitle]!.add({'title': inlinePageTitle, 'content': ''}); // 인라인 페이지 추가
     });
 
-    // 사이드바 업데이트를 위해 데이터 전달
-    widget.navigateToPage(newInlinePageTitle);
-
-    // 새 인라인 페이지 화면으로 이동
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DynamicPage(
-          title: newInlinePageTitle,
-          content: '',
-          recentPages: widget.recentPages,
-          inlinePages: widget.inlinePages,
-          navigateToPage: widget.navigateToPage,
-          onUpdate: (newTitle, newContent) {
-            final index = widget.inlinePages[widget.title]!.indexWhere(
-                  (page) => page['title'] == newInlinePageTitle,
-            );
-            if (index != -1) {
-              setState(() {
-                widget.inlinePages[widget.title]![index]['title'] = newTitle;
-                widget.inlinePages[widget.title]![index]['content'] = newContent;
-              });
-            }
-          },
-          onDelete: () {
-            setState(() {
-              widget.inlinePages[widget.title]?.removeWhere(
-                    (page) => page['title'] == newInlinePageTitle,
-              );
-            });
-            Navigator.pop(context);
-          },
-          addNewPage: widget.addNewPage,
-          parentPage: widget.title,
-        ),
-      ),
-    );
+    _savePages(); // SharedPreferences에 저장
   }
 
 
-  void navigateToInlinePage(String title) {
-    // title에 해당하는 인라인 페이지 데이터 찾기
-    final inlinePageData = inlinePages.firstWhere(
-          (page) => page['title'] == title,
-      orElse: () => {'title': 'Unknown', 'content': 'No content'}, // 기본값 처리
+  void navigateToInlinePage(String pageName) {
+    final inlinePage = inlinePages[pageTitle]?.firstWhere(
+          (page) => page['title'] == pageName,
+      orElse: () => {'title': 'Unknown', 'content': 'No content'},
     );
 
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DynamicPage(
-          title: inlinePageData['title']!, // 인라인 페이지 제목
-          content: inlinePageData['content']!, // 인라인 페이지 내용
-          recentPages: widget.recentPages, // 기존 recentPages 사용
-          inlinePages: widget.inlinePages, // 인라인 페이지 목록 전달
-          navigateToPage: navigateToInlinePage, // 인라인 페이지 간 이동 처리
+          title: inlinePage?['title'] ?? '',
+          content: inlinePage?['content'] ?? '',
+          recentPages: widget.recentPages,
+          inlinePages: inlinePages,
+          navigateToPage: navigateToInlinePage,
           onUpdate: (newTitle, newContent) {
             setState(() {
-              // 인라인 페이지 데이터 업데이트
-              final pageIndex = inlinePages.indexWhere((page) => page['title'] == title);
-              if (pageIndex != -1) {
-                inlinePages[pageIndex]['title'] = newTitle;
-                inlinePages[pageIndex]['content'] = newContent;
+              final pageIndex = inlinePages[pageTitle]?.indexWhere((page) => page['title'] == pageName);
+              if (pageIndex != null && pageIndex >= 0) {
+                inlinePages[pageTitle]![pageIndex] = {'title': newTitle, 'content': newContent};
               }
             });
+            _savePages();
           },
           onDelete: () {
             setState(() {
-              // 인라인 페이지 삭제 처리
-              inlinePages.removeWhere((page) => page['title'] == title);
-              Navigator.pop(context);
+              inlinePages[pageTitle]?.removeWhere((page) => page['title'] == pageName);
             });
+            _savePages();
+            Navigator.pop(context);
           },
-          addNewPage: widget.addNewPage, // 기존 새 페이지 추가 콜백 유지
+          addNewPage: widget.addNewPage,
         ),
       ),
     );
@@ -514,11 +560,13 @@ class _DynamicPageState extends State<DynamicPage> {
   void insertText(String text) {
     final int cursorPos = _contentController.selection.base.offset;
     final String oldText = _contentController.text;
-    final String newText = oldText.substring(0, cursorPos) + text + oldText.substring(cursorPos);
+    final String newText =
+        oldText.substring(0, cursorPos) + text + oldText.substring(cursorPos);
 
     setState(() {
       _contentController.text = newText;
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + text.length);
+      _contentController.selection =
+          TextSelection.collapsed(offset: cursorPos + text.length);
     });
   }
 
@@ -526,22 +574,25 @@ class _DynamicPageState extends State<DynamicPage> {
     final int cursorPos = _contentController.selection.base.offset;
     if (cursorPos > 0) {
       final String oldText = _contentController.text;
-      final String newText = oldText.substring(0, cursorPos - 1) + oldText.substring(cursorPos);
+      final String newText =
+          oldText.substring(0, cursorPos - 1) + oldText.substring(cursorPos);
 
       setState(() {
         _contentController.text = newText;
-        _contentController.selection = TextSelection.collapsed(offset: cursorPos - 1);
+        _contentController.selection =
+            TextSelection.collapsed(offset: cursorPos - 1);
       });
     }
   }
+
   Widget buildRecentPagesBar() {
     return GestureDetector(
       // 페이지 리스트 영역 클릭 시 포커스 해제
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child:Container(
-        height: 50,
+      child: Container(
+        height: 30,
         color: Colors.grey[300],
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
@@ -549,50 +600,74 @@ class _DynamicPageState extends State<DynamicPage> {
           itemBuilder: (context, index) {
             final pageName = widget.recentPages[index];
             return GestureDetector(
-              onTap: () {
-                // 현재 포커스 해제 및 데이터 저장
-                FocusScope.of(context).unfocus();
-                _updatePageData(); // 현재 페이지 데이터 저장
+                onTap: () {
+                  // 현재 포커스 해제 및 데이터 저장
+                  FocusScope.of(context).unfocus();
 
-                // 다른 페이지로 이동
-                setState(() {
-                  pageTitle = pageName;
-                  pageContent = pageData[pageName] ?? ''; // 없는 데이터는 공백 처리
-                  _titleController.text = pageTitle;
-                  _contentController.text = pageContent;
-                });
-                widget.navigateToPage(pageName);
-              },
-              child: Container(
-                margin: EdgeInsets.symmetric(horizontal: 8),
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: pageName == pageTitle ? Colors.blue[50] : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blueAccent),
-                ),
-                child: Text(
-                  pageName,
-                  style: TextStyle(
-                    color: pageName == pageTitle ? Colors.blue : Colors.black,
-                    fontWeight: FontWeight.bold,
+                  // 다른 페이지로 이동
+                  setState(() {
+                    pageTitle = pageName;
+                    pageContent =
+                        pages[pageName]?['content'] ?? ''; // 없는 데이터는 공백 처리
+                    _titleController.text = pageTitle;
+                    _contentController.text = pageContent;
+                  });
+                  widget.navigateToPage(pageName);
+                },
+                child: Expanded(
+                  child: Container(
+                    margin: EdgeInsets.symmetric(horizontal: 1), // 각 항목 간 여백
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: pageName == pageTitle
+                          ? Colors.white
+                          : Colors.blue[50],
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(5),
+                        topRight: Radius.circular(5),
+                        bottomLeft: Radius.circular(0),
+                        bottomRight: Radius.circular(0),
+                      ),
+                      // border: Border.all(color: Colors.blueAccent),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            pageName,
+                            style: TextStyle(
+                              color: pageName == pageTitle
+                                  ? Colors.blue
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10, // 텍스트 크기
+                            ),
+                            overflow: TextOverflow.ellipsis, // 말줄임표 처리
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          child: const Icon(
+                            Icons.close,
+                            size: 14,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            );
+                ));
           },
         ),
       ),
     );
   }
+
 // 페이지 제목을 기반으로 내용을 반환하는 함수
   String _getContentForPage(String pageName) {
-    return pageData[pageName]!;
+    return pageContent = pages[pageName]?['content'] ?? ''; // 없는 데이터는 공백 처리
   }
-
-
-
-
 
   Widget buildContent() {
     final text = _contentController.text;
@@ -609,7 +684,8 @@ class _DynamicPageState extends State<DynamicPage> {
       spans.add(
         TextSpan(
           text: pageTitle,
-          style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+          style: TextStyle(
+              color: Colors.blue, decoration: TextDecoration.underline),
         ),
       );
 
@@ -620,11 +696,23 @@ class _DynamicPageState extends State<DynamicPage> {
       spans.add(TextSpan(text: text.substring(lastMatchEnd)));
     }
 
-    return RichText(text: TextSpan(style: TextStyle(fontSize: textSize), children: spans));
+    return RichText(
+        text: TextSpan(style: TextStyle(fontSize: textSize), children: spans));
   }
 
   Widget buildCustomKeyboard() {
-    final List<String> keys = ['ㄱ', 'ㄴ', 'ㄷ', 'ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', '⌫'];
+    final List<String> keys = [
+      'ㄱ',
+      'ㄴ',
+      'ㄷ',
+      'ㅏ',
+      'ㅑ',
+      'ㅓ',
+      'ㅕ',
+      'ㅗ',
+      'ㅛ',
+      '⌫'
+    ];
 
     return Container(
       color: Colors.grey[300],
@@ -646,20 +734,21 @@ class _DynamicPageState extends State<DynamicPage> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // 화면 아무 곳이나 터치하면 포커스 해제
+        // 화면 아무 곳이나 터치하면 포커스 해제
         onTap: () => FocusScope.of(context).unfocus(), // 화면 클릭 시 모든 포커스 해제
-        child :Scaffold(
+        child: Scaffold(
           body: Row(
             children: [
               Sidebar(
                 recentPages: widget.recentPages, // 전달
                 inlinePages: widget.inlinePages, // 추가된 inlinePages 전달
-                navigateToPage:(pageName) {
+                navigateToPage: (pageName) {
                   FocusScope.of(context).unfocus(); // 사이드바에서 페이지 이동 시 포커스 해제
                   setState(() {
                     // 페이지 제목과 내용을 갱신
                     pageTitle = pageName;
-                    pageContent = pageData[pageName] ?? '';
+                    pageContent = pageContent =
+                        pages[pageName]?['content'] ?? ''; // 없는 데이터는 공백 처리
                     _titleController.text = pageTitle;
                     _contentController.text = pageContent;
                   });
@@ -674,7 +763,8 @@ class _DynamicPageState extends State<DynamicPage> {
                       icon: Icon(Icons.arrow_back),
                       onPressed: () {
                         // 홈으로 이동
-                        FocusScope.of(context).unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
+                        FocusScope.of(context)
+                            .unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
                         Navigator.popUntil(context, (route) => route.isFirst);
                       },
                     ),
@@ -687,18 +777,15 @@ class _DynamicPageState extends State<DynamicPage> {
                       ),
                     ),
                     title: GestureDetector(
-                      onTap: () => _handleDoubleClick(_titleFocusNode), // 더블클릭으로 포커스 해제
+                      onTap: () => _handleDoubleClick(_titleFocusNode),
+                      // 더블클릭으로 포커스 해제
 
                       child: TextField(
                         controller: _titleController,
                         focusNode: _titleFocusNode,
-                        onChanged: (value) {
-                          setState(() {
-                            pageTitle = value;
-                          });
-                        },
+                        onChanged: (value) => _updatePageTitle(value),
                         onEditingComplete: () {
-                          _updatePageData(); // 제목 수정 완료 시 데이터 업데이트
+                          // 제목 수정 완료 시 데이터 업데이트
                           FocusScope.of(context).unfocus(); // 포커스 해제
                         },
                         style: TextStyle(color: Colors.black, fontSize: 20),
@@ -708,55 +795,62 @@ class _DynamicPageState extends State<DynamicPage> {
                         ),
                       ),
                     ),
-                    actions: [
-                      IconButton(
-                        icon: Icon(Icons.add),
-                        onPressed: addInlinePage, // 인라인 페이지 추가 버튼
-                      ),
-                    ],
                   ),
                   body: GestureDetector(
                     // 본문 영역에서 다른 곳 클릭 시 포커스 해제
-                    onTap: () => FocusScope.of(context).unfocus(), // 다른 영역 클릭 시 모든 포커스 해제
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    // 다른 영역 클릭 시 모든 포커스 해제
                     child: Column(
                       children: [
                         buildRecentPagesBar(), // 앱바 아래 최근 페이지 이동 리스트 추가
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => _handleDoubleClick(_contentFocusNode), // 더블클릭으로 포커스 해제
-                            child : Stack(
+                            onTap: () => _handleDoubleClick(_contentFocusNode),
+                            // 더블클릭으로 포커스 해제
+                            child: Stack(
                               children: [
                                 Container(
                                   color: Colors.white,
                                   padding: const EdgeInsets.all(16.0),
                                   child: Column(
                                     children: [
-                                      if (showCalendar) Expanded(child: buildCalendar()),
-                                      if (showTodoList) Expanded(child: buildTodoList()),
+                                      if (showCalendar)
+                                        Expanded(child: buildCalendar()),
+                                      if (showTodoList)
+                                        Expanded(child: buildTodoList()),
                                       Expanded(
                                         child: TextField(
-                                          controller: _contentController,
-                                          focusNode: _contentFocusNode, // 내용 FocusNode 연결
-                                          onChanged: (value) {
-                                            setState(() {
-                                              pageContent = value; // 내용 상태 업데이트
-                                            });
-                                          },
+                                          controller: TextEditingController(
+                                              text: widget.content),
+                                          focusNode: _contentFocusNode,
+                                          // 내용 FocusNode 연결
+                                          onChanged: (value) =>
+                                              _updatePageContent(value),
                                           onEditingComplete: () {
-                                            _updatePageData(); // 내용 편집 완료 시 데이터 업데이트
-                                            FocusScope.of(context).unfocus(); // 본문 포커스 해제
+                                            FocusScope.of(context)
+                                                .unfocus(); // 본문 포커스 해제
                                           },
                                           maxLines: null,
-                                          style: TextStyle(fontSize: textSize),
+                                          style: TextStyle(
+                                            fontSize: textSize,
+                                            fontWeight: isBold
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                            fontStyle: isItalic
+                                                ? FontStyle.italic
+                                                : FontStyle.normal,
+                                            decoration: isUnderline
+                                                ? TextDecoration.underline
+                                                : TextDecoration.none,
+                                          ),
                                           decoration: InputDecoration(
                                             hintText: "내용을 입력하세요",
                                             border: InputBorder.none,
                                           ),
                                         ),
-
                                       ),
-
-                                      if (isKeyboardVisible) buildCustomKeyboard(),
+                                      if (isKeyboardVisible)
+                                        buildCustomKeyboard(),
                                     ],
                                   ),
                                 ),
@@ -772,7 +866,6 @@ class _DynamicPageState extends State<DynamicPage> {
               ),
             ],
           ),
-        )
-    );
+        ));
   }
 }

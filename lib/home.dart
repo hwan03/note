@@ -4,6 +4,8 @@ import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'widgets/todo_data.dart';
 import 'widgets/summary_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 void main() {
   runApp(
@@ -34,12 +36,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
-
+  Map<String, Map<String, dynamic>> pages = {};
   List<String> recentPages = []; // 최근 페이지 목록
   Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
   Map<String, List<Map<String, String>>> inlinePages = {}; // 각 페이지별 인라인 페이지 관리
   int pageCounter = 1; // 페이지 숫자 관리
   ScrollController _recentPagesController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPagesFromLocal(); // 로컬 데이터 불러오기
+  }
 
   Widget _buildLabeledBox({required String label, required Widget child}) {
     return Stack(
@@ -76,11 +84,17 @@ class _HomeScreenState extends State<HomeScreen> {
       pageCounter++;
       recentPages.insert(0, newPageName);
       pageContents[newPageName] = '';
-      inlinePages[newPageName] = []; // 새 페이지에 대한 인라인 페이지 초기화
+      inlinePages[newPageName] = [];
     });
-    navigateToPage(recentPages.first); // 새 페이지로 이동
+    _savePagesToLocal(); // 데이터 저장
+    navigateToPage(recentPages.first);
   }
-
+  Future<void> _savePagesToLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('recentPages', recentPages);
+    await prefs.setString('pageContents', json.encode(pageContents));
+    await prefs.setString('inlinePages', json.encode(inlinePages));
+  }
   //setState(() {
   //       recentPages.add(pageName);
   //     });
@@ -113,8 +127,20 @@ class _HomeScreenState extends State<HomeScreen> {
       // 인라인 페이지 제목도 동기화
       inlinePages[newTitle] = inlinePages.remove(oldTitle) ?? [];
     });
+    _savePagesToLocal(); // 데이터 저장
   }
 
+  Future<void> _loadPagesFromLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentPages = prefs.getStringList('recentPages') ?? [];
+      pageContents = Map<String, String>.from(
+          json.decode(prefs.getString('pageContents') ?? '{}'));
+      inlinePages = Map<String, List<Map<String, String>>>.from(
+        json.decode(prefs.getString('inlinePages') ?? '{}'),
+      );
+    });
+  }
 
 // 페이지 삭제
   void deletePage(String pageName) {
@@ -123,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       recentPages.remove(pageName); // 해당 페이지를 최근 페이지에서 제거
       inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
     });
+    _savePagesToLocal(); // 데이터 저장
     Navigator.popUntil(context, (route) => route.isFirst);
   }
 
