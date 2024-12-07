@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:new_flutter/widgets/dynamic_page.dart';
-import 'package:new_flutter/widgets/sidebar.dart';
-import 'widgets/todo_data.dart';
-import 'widgets/summary_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'widgets/todo_data.dart';
+import 'widgets/summary_chart.dart';
+import 'widgets/sidebar.dart';
+import 'widgets/dynamic_page.dart';
 
 void main() {
   runApp(
@@ -36,161 +36,77 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
-  Map<String, Map<String, dynamic>> pages = {};
-  List<String> recentPages = []; // 최근 페이지 목록
-  Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
-  Map<String, List<Map<String, String>>> inlinePages = {}; // 각 페이지별 인라인 페이지 관리
-  int pageCounter = 1; // 페이지 숫자 관리
-  ScrollController _recentPagesController = ScrollController();
+
+  Map<String, Map<String, dynamic>> pages = {
+    'Home': {'content': 'Welcome to Home', 'parent': null},
+  };
+
 
   @override
   void initState() {
     super.initState();
-    _loadPagesFromLocal(); // 로컬 데이터 불러오기
+    _loadPages(); // 앱 시작 시 저장된 데이터 불러오기
   }
 
-  Widget _buildLabeledBox({required String label, required Widget child}) {
-    return Stack(
-      children: [
-        Container(
-          margin: EdgeInsets.only(top: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Color(0xFFF2F1EE)),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: EdgeInsets.only(top: 24),
-          child: child,
-        ),
-        Positioned(
-          left: 16,
-          top: 0,
-          child: Container(
-            color: Colors.white,
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-          ),
-        ),
-      ],
-    );
+  Future<void> _loadPages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedPages = prefs.getString('pages');
+
+    if (storedPages != null) {
+      setState(() {
+        pages = Map<String, Map<String, dynamic>>.from(
+          jsonDecode(storedPages).map((key, value) =>
+              MapEntry(key, Map<String, dynamic>.from(value))),
+        );
+      });
+    }
+  }
+
+  Future<void> _savePages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pages', jsonEncode(pages));
   }
 
   void addNewPage() {
+    final newPageName = 'Page ${pages.length + 1}';
     setState(() {
-      final newPageName = 'Page $pageCounter';
-      pageCounter++;
-      recentPages.insert(0, newPageName);
-      pageContents[newPageName] = '';
-      inlinePages[newPageName] = [];
+      pages[newPageName] = {'content': '', 'parent': null};
+      _savePages(); // 상태를 저장
+      print('새 페이지 추가: $newPageName'); // 디버깅 출력
     });
-    _savePagesToLocal(); // 데이터 저장
-    navigateToPage(recentPages.first);
-  }
-  Future<void> _savePagesToLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('recentPages', recentPages);
-    await prefs.setString('pageContents', json.encode(pageContents));
-    await prefs.setString('inlinePages', json.encode(inlinePages));
-  }
-  //setState(() {
-  //       recentPages.add(pageName);
-  //     });
-  //
-  // import 'package:flutter/material.dart';
-  //
-  // void main() {
-  //   runApp(MyApp());
-  // } 이거로 하면 최근 페이지부터 나오는거 아님
+    navigateToPage(newPageName);
 
-  void addInlinePage(String parentPage) {
-    final inlinePageTitle = 'Inline Page ${inlinePages[parentPage]?.length ??
-        0 + 1}';
-    setState(() {
-      inlinePages[parentPage]?.add({'title': inlinePageTitle, 'content': ''});
-    });
   }
 
-  // 페이지 제목 수정 시 최근 페이지 목록과 동기화
-  void updatePage(String oldTitle, String newTitle, String newContent) {
-    setState(() {
-      pageContents.remove(oldTitle); // 기존 제목 제거
-      pageContents[newTitle] = newContent; // 새 제목과 내용 추가
-
-      int index = recentPages.indexOf(oldTitle);
-      if (index != -1) {
-        recentPages[index] = newTitle; // 최근 페이지에서 제목 변경
-      }
-
-      // 인라인 페이지 제목도 동기화
-      inlinePages[newTitle] = inlinePages.remove(oldTitle) ?? [];
-    });
-    _savePagesToLocal(); // 데이터 저장
-  }
-
-  Future<void> _loadPagesFromLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      recentPages = prefs.getStringList('recentPages') ?? [];
-      pageContents = Map<String, String>.from(
-          json.decode(prefs.getString('pageContents') ?? '{}'));
-      inlinePages = Map<String, List<Map<String, String>>>.from(
-        json.decode(prefs.getString('inlinePages') ?? '{}'),
-      );
-    });
-  }
-
-// 페이지 삭제
-  void deletePage(String pageName) {
-    setState(() {
-      pageContents.remove(pageName); // 해당 페이지 내용 제거
-      recentPages.remove(pageName); // 해당 페이지를 최근 페이지에서 제거
-      inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
-    });
-    _savePagesToLocal(); // 데이터 저장
-    Navigator.popUntil(context, (route) => route.isFirst);
-  }
 
   void navigateToPage(String pageName) {
-    FocusScope.of(context).unfocus(); // 현재 페이지 포커스 해제 및 데이터 저장
-    setState(() {
-      if (!pageContents.containsKey(pageName)) {
-        pageContents[pageName] = ''; // 새 페이지 내용 초기화
-      }
-    });
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
             DynamicPage(
               title: pageName,
-              content: pageContents[pageName] ?? '',
-              recentPages: recentPages,
-              inlinePages: {
-                pageName: (inlinePages[pageName] as List<
-                    Map<String, String>>?) ?? [],
-              },
-              // 데이터 타입 변환
-              navigateToPage: navigateToPage,
-              onUpdate: (newTitle, newContent) {
+              onUpdate: (updatedTitle, updatedContent) {
                 setState(() {
-                  final index = recentPages.indexOf(pageName);
-                  if (index != -1) recentPages[index] = newTitle;
-                  pageContents.remove(pageName);
-                  pageContents[newTitle] = newContent;
-
-                  // 인라인 페이지 제목 동기화
-                  inlinePages[newTitle] = inlinePages.remove(pageName) ?? [];
+                  if (updatedTitle != pageName) {
+                    pages[updatedTitle] = pages.remove(pageName)!;
+                  }
+                  pages[updatedTitle]?['content'] = updatedContent;
                 });
+                _savePages(); // 변경 사항 저장
               },
-              onDelete: () => deletePage(pageName),
-              addNewPage: addNewPage, // addNewPage 추가
+              onDelete: () {
+                setState(() {
+                  pages.remove(pageName);
+                });
+                _savePages(); // 삭제 후 저장
+                Navigator.pop(context);
+              },
             ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -198,12 +114,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Row(
         children: [
           Sidebar(
-            recentPages: recentPages,
-            inlinePages: inlinePages,
+            pages: pages,
             navigateToPage: navigateToPage,
             addNewPage: addNewPage,
-          ),
-          // Main Content
+          )
+          ,
           Expanded(
             child: Container(
               color: Colors.white,
@@ -222,9 +137,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
                       ),
-                      itemCount: recentPages.length,
+                      itemCount: pages.keys.length,
                       itemBuilder: (context, index) {
-                        final pageName = recentPages[index];
+                        final pageName = pages.keys.toList()[index];
                         return GestureDetector(
                           onTap: () => navigateToPage(pageName), // 페이지 선택 시 이동
                           child: Container(
@@ -256,13 +171,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Padding(
                                   padding: EdgeInsets.all(15),
                                   child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          recentPages[index],
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold),
+                                          pageName,
+                                          style: TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                         Text('2024.01.15'),
                                       ]),
@@ -341,4 +254,37 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildLabeledBox({required String label, required Widget child}) {
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Color(0xFFF2F1EE)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.only(top: 24),
+          child: child,
+        ),
+        Positioned(
+          left: 16,
+          top: 0,
+          child: Container(
+            color: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
+
+
+
+

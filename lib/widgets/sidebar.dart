@@ -4,78 +4,25 @@ import '../home.dart';
 import '../widgets/dynamic_page.dart';
 import '../to_do.dart';
 import '../search.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class Sidebar extends StatefulWidget {
-  final List<String> recentPages; // 상위에서 전달받는 페이지 리스트
-  final Map<String, List<Map<String, String>>> inlinePages;
-  final Function(String) navigateToPage; // 페이지 이동 콜백
-  final VoidCallback addNewPage; // 새 페이지 추가 콜백
+  final Map<String, Map<String, dynamic>> pages; // 페이지 목록
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 페이지 추가 함수
 
   const Sidebar({
-    required this.recentPages,
-    required this.inlinePages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
   }) : super(key: key);
 
-  static void _defaultAddNewPageCallback(String pageName) {
-    // 기본 동작: 아무 작업도 하지 않음
-  }
   @override
   _SidebarState createState() => _SidebarState();
 }
 
-// 페이지별로 인라인 페이지를 표시하기 위한 상태 관리
-Map<String, bool> _expandedPages = {};
-
 class _SidebarState extends State<Sidebar> {
   bool isSidebarOpen = true;
-  List<String> pageNames = []; // 동적으로 추가된 페이지 이름 목록
-  Map<String, String> pageContents = {}; // 페이지 제목과 내용 관리
-  int pageCounter = 1; // 페이지 숫자 관리
-
-  void addNewPage() {
-    setState(() {
-      final newPageName = 'Page ${pageCounter++}';
-      pageNames.insert(0, newPageName);
-      pageContents[newPageName] = "기본 내용입니다.";
-      widget.inlinePages[newPageName] = [];
-
-      if (!widget.recentPages.contains(newPageName)) {
-        widget.recentPages.insert(0, newPageName);
-      }
-    });
-    _savePages(); // SharedPreferences에 저장
-    navigateToPage(pageNames.first);
-  }
-
-  // 페이지 제목 수정
-  void updatePageTitle(String oldTitle, String newTitle) {
-    setState(() {
-      // 페이지 이름과 내용을 업데이트
-      int index = pageNames.indexOf(oldTitle);
-      if (index != -1) {
-        pageNames[index] = newTitle; // 제목 업데이트
-        pageContents[newTitle] = pageContents[oldTitle] ?? '기본 내용입니다.'; // 내용 유지
-        pageContents.remove(oldTitle); // 이전 제목 삭제
-        widget.inlinePages[newTitle] = widget.inlinePages[oldTitle] ?? []; // 인라인 페이지 이동
-        widget.inlinePages[newTitle] = widget.inlinePages.remove(oldTitle) ?? []; // 인라인 페이지 이동
-      }
-    });
-    _savePages();
-  }
-
-  void deletePage(String pageName) {
-    setState(() {
-      pageNames.remove(pageName);
-      pageContents.remove(pageName);
-      widget.inlinePages.remove(pageName); // 해당 페이지의 인라인 페이지 삭제
-    });
-    _savePages(); // SharedPreferences에 저장
-  }
 
   void _toggleSidebar() {
     setState(() {
@@ -83,63 +30,81 @@ class _SidebarState extends State<Sidebar> {
     });
   }
 
-  void navigateToPage(String pageName) {
-    // 페이지에 해당하는 인라인 페이지 데이터를 안전하게 가져오기
-    final inlinePageData = widget.inlinePages.containsKey(pageName)
-        ? widget.inlinePages[pageName]
-        : {}; // 키가 없을 경우 빈 Map으로 대체
+  List<Widget> _buildChevronIcons(String? parent) {
+    List<Widget> chevrons = [];
+    String? currentParent = parent;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DynamicPage(
-          title: pageName,
-          content: pageContents[pageName] ?? '내용 없음',
-          recentPages: widget.recentPages,
-          inlinePages: widget.inlinePages,
-          navigateToPage: widget.navigateToPage,
-          onUpdate: (newTitle, newContent) {
-            updatePageTitle(pageName, newTitle); // 페이지 제목 수정
-            pageContents[newTitle] = newContent; // 내용 수정
-          },
-          onDelete: () {
-            deletePage(pageName); // 페이지 삭제
-            Navigator.pop(context);
-          },
-          addNewPage: widget.addNewPage, // addNewPage 추가
-        ),
-      ),
-    );
-  }
-
-
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPages();
-    for (var page in widget.recentPages) {
-      _expandedPages[page] = true;
+    while (currentParent != null) {
+      chevrons.add(Icon(Icons.chevron_right, color: Color(0xFF91918E), size:16));
+      currentParent = widget.pages[currentParent]?['parent']; // 부모를 따라 계층 추적
     }
+
+    // while (currentParent != null) {
+    //   chevrons.add(
+    //     Text(
+    //       '> ',
+    //       style: TextStyle(color: Color(0xFF91918E), fontSize: 14), // 스타일 지정
+    //     ),
+    //   );
+    //   currentParent = widget.pages[currentParent]?['parent']; // 부모를 따라 계층 추적
+    // }
+
+    return chevrons;
   }
 
-  Future<void> _loadPages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPages = prefs.getString('pages'); // 저장된 페이지 데이터
-    if (savedPages != null) {
-      setState(() {
-        final decodedPages = Map<String, String>.from(json.decode(savedPages));
-        pageNames = decodedPages.keys.toList(); // 페이지 이름 리스트
-        pageContents = decodedPages; // 페이지 내용
-        pageCounter = pageNames.length + 1; // 카운터 갱신
+  Widget buildSidebarPages() {
+    // 부모-자식 관계를 반영해 페이지를 계층적으로 정렬
+    List<Widget> buildPageItems(String? parent) {
+      List<Widget> pageItems = [];
+
+      // 현재 부모 아래의 자식들 필터링
+      widget.pages.forEach((pageName, pageData) {
+        if (pageData['parent'] == parent) {
+          pageItems.add(
+            ListTile(
+              leading: Row(
+                mainAxisSize: MainAxisSize.min, // 크기를 내용에 맞춤
+                children: [
+                  ..._buildChevronIcons(pageData['parent']), // 부모 계층 아이콘 추가
+                  Icon(Icons.description_outlined, color: Color(0xFF91918E)), // 마지막 아이콘
+                ],
+              ),
+              title: isSidebarOpen ? Text(pageName) : null,
+              onTap: () => widget.navigateToPage(pageName),
+            ),
+          );
+          // 자식의 자식들도 추가
+          pageItems.addAll(buildPageItems(pageName));
+        }
       });
+
+      return pageItems;
     }
+
+    // 최상위 레벨 페이지(부모가 없는 페이지)부터 시작
+    List<Widget> topLevelPages = [];
+    widget.pages.forEach((pageName, pageData) {
+      if (pageData['parent'] == null) {
+        topLevelPages.add(
+          ListTile(
+            leading: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.description_outlined, color: Color(0xFF91918E)),
+              ],
+            ),
+            title: isSidebarOpen ? Text(pageName) : null,
+            onTap: () => widget.navigateToPage(pageName),
+          ),
+        );
+        topLevelPages.addAll(buildPageItems(pageName)); // 자식 페이지 추가
+      }
+    });
+
+    return ListView(children: topLevelPages);
   }
 
-  Future<void> _savePages() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pages', json.encode(pageContents));
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -153,12 +118,13 @@ class _SidebarState extends State<Sidebar> {
           Align(
             alignment: Alignment.topRight,
             child: IconButton(
-              icon: Icon(isSidebarOpen ? Icons.chevron_left : Icons.chevron_right),
-              onPressed: () {
-                _toggleSidebar();
-              },
+              icon: Icon(
+                isSidebarOpen ? Icons.chevron_left : Icons.chevron_right,
+              ),
+              onPressed: _toggleSidebar,
             ),
           ),
+          // 고정 메뉴 (홈, 검색, 설정)
           _buildSidebarItem(
             icon: Icons.home_outlined,
             label: '홈',
@@ -178,11 +144,10 @@ class _SidebarState extends State<Sidebar> {
                 context,
                 MaterialPageRoute(
                     builder: (context) => SearchPage(
-                      recentPages: widget.recentPages,
-                      inlinePages: widget.inlinePages,
+                      pages: widget.pages,
                       navigateToPage: widget.navigateToPage,
                       addNewPage: widget.addNewPage,
-                )),
+                    )),
               );
             },
           ),
@@ -193,8 +158,7 @@ class _SidebarState extends State<Sidebar> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CalendarPage(
-                  recentPages: widget.recentPages,
-                  inlinePages: widget.inlinePages,
+                  pages: widget.pages,
                   navigateToPage: widget.navigateToPage,
                   addNewPage: widget.addNewPage,
                 )),
@@ -210,11 +174,10 @@ class _SidebarState extends State<Sidebar> {
                 context,
                 MaterialPageRoute(
                     builder: (context) => ToDoPage(
-                  recentPages: widget.recentPages,
-                  inlinePages: widget.inlinePages,
-                  navigateToPage: widget.navigateToPage,
-                  addNewPage: widget.addNewPage,
-                )),
+                      pages: widget.pages,
+                      navigateToPage: widget.navigateToPage,
+                      addNewPage: widget.addNewPage,
+                    )),
               );
             },
           ),
@@ -225,38 +188,15 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.add,
             label: '새 페이지',
-            onTap: addNewPage, // 새 페이지 추가 로직 호출
+            onTap: widget.addNewPage,
+            // 새 페이지 추가 로직 호출
           ),
           Divider(),
-          Container(
-            height: 300,
-            child: ListView.builder(
-              itemCount: widget.recentPages.length,
-              itemBuilder: (context, index) {
-                final pageName = widget.recentPages[index];
-                final inlinePagesForPage = widget.inlinePages[pageName] ?? [];
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ListTile(
-                      leading: Icon(Icons.description_outlined, color: Color(0xFF91918E)),
-                      title: isSidebarOpen ? Text(pageName) : null,
-                      onTap: () => widget.navigateToPage(pageName),
-                    ),
-                    ...inlinePagesForPage.map((inlinePage) {
-                      return ListTile(
-                        leading: Icon(Icons.subdirectory_arrow_right),
-                        title: Text(inlinePage['title'] ?? ''),
-                        onTap: () => widget.navigateToPage(inlinePage['title']!),
-                      );
-                    }).toList(),
-                  ],
-                );
-              },
-            ),
+          Expanded(
+            child: buildSidebarPages(), // 최상위부터 계층적으로 페이지 표시
           ),
-          Spacer(), // 기존 Spacer 유지
+
+        Spacer(),
           _buildSidebarItem(
             icon: Icons.delete,
             label: '휴지통',
@@ -281,4 +221,5 @@ class _SidebarState extends State<Sidebar> {
       onTap: onTap,
     );
   }
+
 }

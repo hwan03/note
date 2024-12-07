@@ -5,14 +5,12 @@ import 'widgets/sidebar.dart'; // Sidebar import
 import 'widgets/summary_chart.dart'; // SummarySection import
 
 class ToDoPage extends StatefulWidget {
-  final List<String> recentPages;
-  final Map<String, List<Map<String, String>>> inlinePages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 새 페이지 추가 함수
 
   const ToDoPage({
-    required this.recentPages,
-    required this.inlinePages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -31,8 +29,7 @@ class _ToDoPageState extends State<ToDoPage> {
       body: Row(
         children: [
           Sidebar(
-            recentPages: widget.recentPages,
-            inlinePages: widget.inlinePages,
+            pages: widget.pages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ), // Sidebar widget 사용
