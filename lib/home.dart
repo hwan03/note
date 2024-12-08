@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:new_flutter/state/scheduleState.dart';
 import 'package:provider/provider.dart';
 import 'package:new_flutter/widgets/dynamic_page.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'widgets/todo_data.dart';
 import 'widgets/summary_chart.dart';
+import 'package:new_flutter/widgets/buildSchedule.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => ToDoData(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ToDoData()),
+        ChangeNotifierProvider(create: (context) => ScheduleState()),
+      ],
       child: MyApp(),
     ),
   );
@@ -22,6 +28,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
+      locale: Locale('ko', 'KR'), // 한국어 설정
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        Locale('ko', 'KR'), // 한국어 지원
+        Locale('en', 'US'), // 기본 영어
+      ],
       home: HomeScreen(),
     );
   }
@@ -49,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     navigateToPage(recentPages.first); // 새 페이지로 이동
   }
+
   //setState(() {
   //       recentPages.add(pageName);
   //     });
@@ -104,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
               pageContents[newTitle] = newContent;
             });
           },
-          onDelete:() => deletePage(pageName),
+          onDelete: () => deletePage(pageName),
           addNewPage: addNewPage, // addNewPage 추가
         ),
       ),
@@ -113,6 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheduleState = Provider.of<ScheduleState>(context, listen: true);
     return Scaffold(
       body: Row(
         children: [
@@ -146,45 +164,48 @@ class _HomeScreenState extends State<HomeScreen> {
                         return GestureDetector(
                           onTap: () => navigateToPage(pageName), // 페이지 선택 시 이동
                           child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Color(0xFFF2F1EE)),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              // padding: EdgeInsets.all(8),
-                              // padding: E
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(15),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Color(0xFFF2F1EE)),
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(15),
-                                      topRight: Radius.circular(15)),
-                                  color: Color(0xFFF2F1EE),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Color(0xFFF2F1EE)),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            // padding: EdgeInsets.all(8),
+                            // padding: E
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  padding: EdgeInsets.all(15),
+                                  decoration: BoxDecoration(
+                                    border:
+                                        Border.all(color: Color(0xFFF2F1EE)),
+                                    borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(15),
+                                        topRight: Radius.circular(15)),
+                                    color: Color(0xFFF2F1EE),
+                                  ),
+                                  alignment: Alignment.bottomLeft,
+                                  child: Icon(
+                                    Icons.description_outlined,
+                                    size: 40,
+                                    color: Color(0xFF91918E),
+                                  ),
                                 ),
-                                alignment: Alignment.bottomLeft,
-                                child: Icon(Icons.description_outlined,
-                                    size: 40, color: Color(0xFF91918E),),
-
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(15),
-                                child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        recentPages[index],
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      Text('2024.01.15'),
-                                    ]),
-                              )
-                            ],
+                                Padding(
+                                  padding: EdgeInsets.all(15),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          recentPages[index],
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        Text('2024.01.15'),
+                                      ]),
+                                )
+                              ],
                             ),
                           ),
                         );
@@ -204,7 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               margin: EdgeInsets.only(bottom: 16), // 추가된 부분
                               padding: EdgeInsets.all(16), // 추가된 부분
                               child: Center(
-                                child: SummaryChart(toDoData: context.watch<ToDoData>()),
+                                child: SummaryChart(
+                                    toDoData: context.watch<ToDoData>()),
                               ),
                             ),
                           ),
@@ -213,37 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '일정',
-                            child: ListView.builder(
-                              itemCount: 3,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Row(
-                                    children: const [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text('월요일 11월 6일',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w500)),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                          children: [
-                                            Text('○○ 미팅'),
-                                            Text('9AM',
-                                                style: TextStyle(
-                                                    color: Colors.grey)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                            child: BuildSchedule(scheduleState: scheduleState,isHome: true,)
                           ),
                         ),
                       ],
