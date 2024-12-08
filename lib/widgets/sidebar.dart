@@ -4,6 +4,7 @@ import '../home.dart';
 import '../widgets/dynamic_page.dart';
 import '../to_do.dart';
 import '../search.dart';
+import '../web_link.dart';
 
 class Sidebar extends StatefulWidget {
   final List<String> recentPages; // 상위에서 전달받는 페이지 리스트
@@ -181,6 +182,17 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.language,
             label: '대외 웹사이트',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => WebLinkPage(
+                      recentPages: widget.recentPages,
+                      navigateToPage: widget.navigateToPage,
+                      addNewPage: widget.addNewPage,
+                    )),
+              );
+            },
           ),
           _buildSidebarItem(
             icon: Icons.add,
