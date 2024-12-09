@@ -1,18 +1,28 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:table_calendar/table_calendar.dart';
 import '../widgets/sidebar.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_font_picker/flutter_font_picker.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'dart:async';
+
+
 
 class DynamicPage extends StatefulWidget {
   final String title;
   final Function(String updatedTitle, String updatedContent)? onUpdate;
+  final Function(String newPageName, String? parent)? onAddPage; // 새 콜백 추가
   final VoidCallback? onDelete;
 
 
   const DynamicPage({
     required this.title,
     this.onUpdate,
+    this.onAddPage,
     this.onDelete,
     Key? key,
   }) : super(key: key);
@@ -23,9 +33,11 @@ class DynamicPage extends StatefulWidget {
 
 class _DynamicPageState extends State<DynamicPage> {
   late Map<String, Map<String, dynamic>> pages;
-
+  late String _currentTitle; // 로컬 상태 변수 추가
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
+  final FocusNode _titleFocusNode = FocusNode();
+  late quill.QuillController _quillController;
 
   bool isEditing = false;
   bool isKeyboardVisible = false;
@@ -36,6 +48,7 @@ class _DynamicPageState extends State<DynamicPage> {
   bool showCalendar = false;
   bool showTodoList = false;
   double textSize = 16.0;
+  String selectedFont = 'Roboto';
 
   final List<Map<String, dynamic>> contentItems = [
     {'type': 'text', 'value': '', 'controller': TextEditingController(), 'focusNode': FocusNode()},
@@ -47,20 +60,206 @@ class _DynamicPageState extends State<DynamicPage> {
   List<Map<String, dynamic>> todoList = [];
   final TextEditingController _todoController = TextEditingController();
 
+  TextStyle defaultStyle = GoogleFonts.roboto(fontSize: 16);
+  TextStyle selectedStyle = GoogleFonts.roboto(fontSize: 16);
+  TextSelection? _selection;
+
+  final TextEditingController _controller = TextEditingController();
+
+  void applyStyleToSelection() {
+    final selection = _controller.selection;
+
+    if (selection.isCollapsed) {
+      // 선택된 텍스트가 없으면 스타일을 변경하지 않음
+      return;
+    }
+
+    final text = _controller.text;
+
+    final beforeSelection = text.substring(0, selection.start);
+    final selectedText = text.substring(selection.start, selection.end);
+    final afterSelection = text.substring(selection.end);
+
+    setState(() {
+      // 선택된 텍스트 스타일 변경
+      _controller.text = beforeSelection + selectedText + afterSelection;
+      _controller.selection = TextSelection(
+        baseOffset: beforeSelection.length,
+        extentOffset: beforeSelection.length + selectedText.length,
+      );
+
+      selectedStyle = GoogleFonts.getFont(
+        selectedFont,
+        fontSize: 16,
+        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+        decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _currentTitle = widget.title;
+    _quillController = quill.QuillController.basic();
     _loadPages();
+
+
+    // QuillController에 리스너 추가 (내용 변경 시 저장)
+    _quillController.addListener(() {
+      _savePages();
+    });
   }
+
+  TextStyle getTextStyle() {
+    return GoogleFonts.getFont(
+      selectedFont,
+      fontSize: textSize,
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
+    );
+  }
+  void showFontPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("폰트 선택"),
+          content: SizedBox(
+            height: 400,
+            child: FontPicker(
+              initialFontFamily: selectedFont,
+              onFontChanged: (newFont) {
+                setState(() {
+                  selectedFont = newFont.fontFamily ?? 'Roboto';
+                  // QuillController에 폰트 스타일 적용
+                  _quillController.formatSelection(
+                    quill.Attribute.fromKeyValue(
+                      'font',
+                      selectedFont,
+                    ),
+                  );
+                });
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showTextStyleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("텍스트 스타일"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "텍스트 크기",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                value: textSize,
+                min: 10,
+                max: 40,
+                divisions: 6,
+                label: textSize.round().toString(),
+                onChanged: (value) {
+                  setState(() {
+                    textSize = value;
+                    // QuillController에 텍스트 크기 적용
+                    _quillController.formatSelection(
+                      quill.Attribute.fromKeyValue(
+                        'size',
+                        '${textSize.toInt()}px',
+                      ),
+                    );
+                  });
+                },
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.format_bold),
+                    color: isBold ? Colors.blue : Colors.black,
+                    onPressed: () {
+                      setState(() {
+                        isBold = !isBold;
+                        // QuillController에 Bold 스타일 적용
+                        _quillController.formatSelection(
+                          quill.Attribute.bold,
+                        );
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.format_italic),
+                    color: isItalic ? Colors.blue : Colors.black,
+                    onPressed: () {
+                      setState(() {
+                        isItalic = !isItalic;
+                        // QuillController에 Italic 스타일 적용
+                        _quillController.formatSelection(
+                          quill.Attribute.italic,
+                        );
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.format_underline),
+                    color: isUnderline ? Colors.blue : Colors.black,
+                    onPressed: () {
+                      setState(() {
+                        isUnderline = !isUnderline;
+                        // QuillController에 Underline 스타일 적용
+                        _quillController.formatSelection(
+                          quill.Attribute.underline,
+                        );
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("확인"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
 
   Future<void> _loadPages() async {
     final prefs = await SharedPreferences.getInstance();
-    final storedPages = prefs.getString('pages');
 
-    if (storedPages != null) {
+    // 페이지 목록 불러오기
+    final pagesJson = prefs.getString('pages');
+    if (pagesJson != null) {
       setState(() {
         pages = Map<String, Map<String, dynamic>>.from(
-          jsonDecode(storedPages).map((key, value) =>
+          jsonDecode(pagesJson).map((key, value) =>
               MapEntry(key, Map<String, dynamic>.from(value))),
         );
       });
@@ -70,54 +269,210 @@ class _DynamicPageState extends State<DynamicPage> {
       });
     }
 
-    _titleController.text = widget.title;
-    _contentController.text = pages[widget.title]?['content'] ?? '';
+    // Delta 형식의 문서를 로드하여 Quill 문서로 변환
+    final documentJson = prefs.getString(widget.title);
+    if (documentJson != null) {
+      final documentDelta = quill.Document.fromJson(jsonDecode(documentJson));
+      setState(() {
+        _quillController = quill.QuillController(
+          document: documentDelta,
+          selection: const TextSelection.collapsed(offset: 0),
+        );
+      });
+    } else {
+      setState(() {
+        _quillController = quill.QuillController.basic();
+      });
+    }
+
+    // 제목 로드
+    setState(() {
+      _titleController.text = widget.title;
+    });
   }
+
 
   Future<void> _savePages() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pages', jsonEncode(pages));
-  }
 
-  void _updatePage(String newTitle, String newContent) {
-    final oldTitle = widget.title;
+    // 현재 상태 저장
+    final newTitle = _titleController.text.trim();
+    final newContent = _quillController.document.toPlainText().trim();
 
     setState(() {
-      if (newTitle != oldTitle) {
-        pages[newTitle] = pages.remove(oldTitle)!;
+      pages[newTitle] = {
+        'content': newContent,
+        'parent': pages[_currentTitle]?['parent'], // 부모 정보 유지
+      };
+      if (newTitle != _currentTitle) {
+        // 제목 변경 처리
+        pages.remove(_currentTitle);
+        _currentTitle = newTitle;
       }
-      pages[newTitle]?['content'] = newContent;
     });
 
-    _savePages();
+    // 모든 페이지 저장
+    final pagesJson = jsonEncode(pages);
+    await prefs.setString('pages', pagesJson);
 
-    // onUpdate 콜백 호출
-    widget.onUpdate?.call(newTitle, newContent);
+    // 현재 문서 저장
+    final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
+    await prefs.setString(newTitle, documentJson);
+
+    // 저장 완료 알림
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('저장되었습니다!')),
+    );
   }
+
+
+  void _updatePage(String newTitle, String newContent) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      if (newTitle != _currentTitle) {
+        final oldTitle = _currentTitle;
+
+        // 기존 데이터 삭제
+        final pageData = pages.remove(oldTitle);
+        prefs.remove(oldTitle);
+
+        if (pageData != null) {
+          // 새로운 제목과 내용으로 저장 (가장 최근 방문으로 이동)
+          pages = {
+            newTitle: {
+              'content': newContent,
+              ...pageData,
+              'parent': pageData['parent'],
+            },
+            ...pages,
+          };
+          _currentTitle = newTitle; // 로컬 상태 업데이트
+        }
+      } else {
+        // 내용만 업데이트 (순서 유지)
+        pages[newTitle]?['content'] = newContent;
+      }
+    });
+
+    // SharedPreferences에 저장
+    final pagesJson = jsonEncode(pages);
+    await prefs.setString('pages', pagesJson);
+
+    final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
+    await prefs.setString(newTitle, documentJson);
+// 변경된 제목을 기준으로 활성화
+    setState(() {
+      _currentTitle = newTitle; // 현재 활성화된 페이지를 업데이트
+    });
+
+    widget.onUpdate?.call(newTitle, newContent); // 콜백 호출
+  }
+
+
+
+  Future<void> _handleSaveAndExit() async {
+    final newTitle = _titleController.text.trim(); // 제목 가져오기
+    final newContent = _quillController.document.toPlainText().trim(); // 내용 가져오기
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('변경 사항 저장'),
+          content: Text('변경 사항을 저장하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true), // 저장
+              child: Text('예'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false), // 저장하지 않음
+              child: Text('아니요'),
+            ),
+
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      if (newTitle.isNotEmpty || newContent.isNotEmpty) {
+        // 제목과 내용을 함께 업데이트
+        _updatePage(newTitle, newContent);
+
+      }
+
+      // 홈 화면으로 이동
+      FocusScope.of(context).unfocus(); // 포커스 해제
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      });
+    }
+  }
+
 
   void _deletePage() {
     setState(() {
       pages.remove(widget.title);
     });
-
     _savePages();
-
-    // onDelete 콜백 호출
     widget.onDelete?.call();
-    Navigator.pop(context);
+    Navigator.popUntil(context, (route) => route.isFirst); // 홈 화면으로 이동
   }
 
+  int _getPageDepth(String pageName) {
+    int depth = 0;
+    String? currentPage = pageName;
+
+    // 부모를 따라가며 깊이를 계산
+    while (currentPage != null && pages[currentPage]?['parent'] != null) {
+      depth++;
+      currentPage = pages[currentPage]?['parent'];
+    }
+
+    return depth;
+  }
+
+
   void _addPage({String? parent}) {
-    final String newPageName = 'Page ${pages.length + 1}';
+    // 부모 페이지의 깊이 확인
+    if (parent != null && _getPageDepth(parent) >= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('페이지 깊이는 최대 2단계까지만 생성할 수 있습니다.')),
+      );
+      return;
+    }
+
+    String newPageName;
+
+    // 숫자만 추출하고 정렬
+    List<int> pageNumbers = pages.keys
+        .where((key) => RegExp(r'^Page (\d+)$').hasMatch(key)) // "Page X" 형식 필터링
+        .map((key) => int.parse(RegExp(r'^Page (\d+)$').firstMatch(key)!.group(1)!))
+        .toList()
+      ..sort();
+
+    // 비어 있는 숫자 찾기
+    int newNumber = 1;
+    for (int i = 1; i <= pageNumbers.length + 1; i++) {
+      if (!pageNumbers.contains(i)) {
+        newNumber = i;
+        break;
+      }
+    }
+
+    newPageName = 'Page $newNumber';
 
     setState(() {
-      // 새 페이지를 추가하며 부모 정보를 현재 페이지로 설정
       pages[newPageName] = {'content': '', 'parent': parent};
     });
 
-    _savePages(); // 변경 사항 저장
+    // `onAddPage` 콜백 호출
+    widget.onAddPage?.call(newPageName, parent);
 
-    // 새로 생성된 페이지로 이동
+    _savePages();
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -174,23 +529,18 @@ class _DynamicPageState extends State<DynamicPage> {
       ),
     );
   }
-
+// 클래스 내부
+  Timer? _debounce; // Debounce용 Timer
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _titleFocusNode.dispose();
+    _quillController.dispose();
     super.dispose();
   }
 
-  void _addTextField(Offset position) {
-    setState(() {
-      contentItems.add({
-        'type': 'textField',
-        'position': position,
-      });
-    });
-  }
 
   // 체크리스트 추가 메서드
   void addChecklistItem() {
@@ -211,91 +561,126 @@ class _DynamicPageState extends State<DynamicPage> {
     });
   }
 
-  void addTodoItem() {
-    if (_todoController.text.isEmpty) return;
-    setState(() {
-      todoList.add({'task': _todoController.text, 'completed': false});
-      _todoController.clear();
-    });
-  }
-
-  void toggleTodoItem(int index) {
-    setState(() {
-      todoList[index]['completed'] = !todoList[index]['completed'];
-    });
-  }
-
-  void deleteTodoItem(int index) {
-    setState(() {
-      todoList.removeAt(index);
-    });
-  }
-  Widget buildCalendar() {
-    return TableCalendar(
-      firstDay: DateTime.utc(2020, 1, 1),
-      lastDay: DateTime.utc(2030, 12, 31),
-      focusedDay: _focusedDay,
-      selectedDayPredicate: (day) {
-        return isSameDay(_selectedDay, day);
-      },
-      onDaySelected: (selectedDay, focusedDay) {
-        setState(() {
-          _selectedDay = selectedDay;
-          _focusedDay = focusedDay;
-        });
-      },
-      calendarStyle: CalendarStyle(
-        selectedDecoration: BoxDecoration(
-          color: Colors.blue,
-          shape: BoxShape.circle,
-        ),
-        todayDecoration: BoxDecoration(
-          color: Colors.orange,
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-
-  Widget buildTodoList() {
+  Widget buildChecklist() {
     return Column(
       children: [
-        TextField(
-          controller: _todoController,
-          decoration: InputDecoration(
-            hintText: '새로운 할 일 추가',
-            suffixIcon: IconButton(
-              icon: Icon(Icons.add),
-              onPressed: addTodoItem,
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: todoList.length,
-            itemBuilder: (context, index) {
-              final item = todoList[index];
-              return ListTile(
-                leading: Checkbox(
-                  value: item['completed'],
-                  onChanged: (value) => toggleTodoItem(index),
-                ),
-                title: Text(
-                  item['task'],
-                  style: TextStyle(
-                    decoration: item['completed'] ? TextDecoration.lineThrough : null,
+        ListView.builder(
+          shrinkWrap: true,
+          itemCount: contentItems.length,
+          itemBuilder: (context, index) {
+            final item = contentItems[index];
+            if (item['type'] == 'checklist') {
+              return Row(
+                children: [
+                  Checkbox(
+                    value: item['checked'],
+                    onChanged: (value) {
+                      setState(() {
+                        item['checked'] = value!;
+                      });
+                    },
                   ),
-                ),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () => deleteTodoItem(index),
-                ),
+                  Expanded(
+                    child: TextField(
+                      controller: item['controller'],
+                      decoration: InputDecoration(hintText: '항목 입력'),
+                      onChanged: (text) {
+                        setState(() {
+                          item['value'] = text;
+                        });
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () => removeChecklistItem(index),
+                  ),
+                ],
               );
-            },
-          ),
+            }
+            return Container();
+          },
+        ),
+        ElevatedButton(
+          onPressed: addChecklistItem,
+          child: Text('체크리스트 추가'),
         ),
       ],
     );
+  }
+
+  void applyBulletPoint() {
+    _quillController.formatSelection(quill.Attribute.ul);
+  }
+
+  void applyNumberedList() {
+    _quillController.formatSelection(quill.Attribute.ol);
+  }
+
+  void insertCalendar() {
+    final embedJson = {
+      'insert': {'embed': 'calendar'}
+    };
+    final offset = _quillController.selection.baseOffset;
+    _quillController.document.insert(offset, jsonEncode(embedJson));
+  }
+
+  void insertTodoList() {
+    final embedJson = {
+      'insert': {'embed': 'todo'}
+    };
+    final offset = _quillController.selection.baseOffset;
+    _quillController.document.insert(offset, jsonEncode(embedJson));
+  }
+  /// 캘린더 Embed 렌더러
+  Widget calendarEmbedBuilder(BuildContext context, quill.Embed embed, bool readOnly) {
+    if (embed.value == 'calendar') {
+      return TableCalendar(
+        firstDay: DateTime.utc(2020, 1, 1),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: DateTime.now(),
+        calendarStyle: CalendarStyle(
+          selectedDecoration: BoxDecoration(
+            color: Colors.blue,
+            shape: BoxShape.circle,
+          ),
+        ),
+      );
+    }
+    return SizedBox.shrink(); // 기본값: 빈 위젯 반환
+  }
+
+
+  Widget customEmbedBuilder(BuildContext context, quill.Embed embed, bool readOnly) {
+    if (embed.value == 'calendar') {
+      return TableCalendar(
+        firstDay: DateTime.utc(2020, 1, 1),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: DateTime.now(),
+        calendarStyle: CalendarStyle(
+          selectedDecoration: BoxDecoration(
+            color: Colors.blue,
+            shape: BoxShape.circle,
+          ),
+        ),
+      );
+    } else if (embed.value == 'todo') {
+      return Column(
+        children: [
+          CheckboxListTile(
+            title: Text('할 일 항목 1'),
+            value: false,
+            onChanged: readOnly ? null : (value) {},
+          ),
+          CheckboxListTile(
+            title: Text('할 일 항목 2'),
+            value: true,
+            onChanged: readOnly ? null : (value) {},
+          ),
+        ],
+      );
+    }
+    return Container(); // 기본값
   }
 
   void toggleCalendar() {
@@ -312,68 +697,114 @@ class _DynamicPageState extends State<DynamicPage> {
     });
   }
 
-  void toggleEditMode() {
-    setState(() {
-      isEditing = true;
-    });
-  }
-
   void insertBulletPoint() {
-    final int cursorPos = _contentController.selection.base.offset; // 커서 위치 가져오기
-    final String oldText = _contentController.text; // 기존 텍스트 가져오기
+    final selection = _quillController.selection;
 
-    // 새로운 텍스트 생성
-    final String newText = oldText.substring(0, cursorPos) + '- ' + oldText.substring(cursorPos);
-
-    setState(() {
-      _contentController.text = newText; // 텍스트 업데이트
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + 2); // 커서 위치 이동
-    });
-
-    _updatePage(_titleController.text, _contentController.text); // 페이지 데이터 저장
+    // 선택된 텍스트에 Bullet 스타일 추가
+    if (!selection.isCollapsed) {
+      _quillController.formatSelection(quill.Attribute.ul);
+    } else {
+      final index = selection.baseOffset;
+      _quillController.document.insert(index, '\n• '); // Bullet Point 추가
+      _quillController.updateSelection(
+        TextSelection.collapsed(offset: index + 2),
+        quill.ChangeSource.local,
+      );
+    }
   }
+
+
 
   void insertNumberedList() {
-    final int cursorPos = _contentController.selection.base.offset; // 커서 위치 가져오기
-    final String oldText = _contentController.text; // 기존 텍스트 가져오기
+    final selection = _quillController.selection;
 
-    lastNumber++; // 번호 증가
-    // 새로운 텍스트 생성
-    final String newText = oldText.substring(0, cursorPos) + '$lastNumber. ' + oldText.substring(cursorPos);
-
-    setState(() {
-      _contentController.text = newText; // 텍스트 업데이트
-      _contentController.selection = TextSelection.collapsed(offset: cursorPos + 3); // 커서 위치 이동
-    });
-
-    _updatePage(_titleController.text, _contentController.text); // 페이지 데이터 저장
+    // 선택된 텍스트에 Numbered 스타일 추가
+    if (!selection.isCollapsed) {
+      _quillController.formatSelection(quill.Attribute.ol);
+    } else {
+      final index = selection.baseOffset;
+      _quillController.document.insert(index, '\n1. '); // Numbered List 추가
+      _quillController.updateSelection(
+        TextSelection.collapsed(offset: index + 3),
+        quill.ChangeSource.local,
+      );
+    }
   }
 
+  void alignLeft() {
+    _quillController.formatSelection(quill.Attribute.leftAlignment);
+  }
 
-  void toggleBold() {
+  void alignCenter() {
+    _quillController.formatSelection(quill.Attribute.centerAlignment);
+  }
+
+  void alignRight() {
+    _quillController.formatSelection(quill.Attribute.rightAlignment);
+  }
+
+  void alignJustify() {
+    _quillController.formatSelection(quill.Attribute.justifyAlignment);
+  }
+
+  final List<int> fontSizes = [12, 14, 16, 18, 20, 24, 30, 36];
+
+  void changeTextSize(int size) {
     setState(() {
-      isBold = !isBold;
+      textSize = size.toDouble();
+
+      if (!_quillController.selection.isCollapsed) {
+        _quillController.formatSelection(
+          quill.Attribute.fromKeyValue('size', size.toString()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("텍스트를 선택해주세요.")),
+        );
+      }
     });
   }
 
-  void toggleItalic() {
-    setState(() {
-      isItalic = !isItalic;
-    });
+  void showFontSizeDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('텍스트 크기 선택'),
+          content: SizedBox(
+            width: 300, // 다이얼로그 너비 조정
+            height: 250, // 다이얼로그 높이 조정
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: fontSizes.length,
+              itemBuilder: (BuildContext context, int index) {
+                final size = fontSizes[index];
+                return ListTile(
+                  title: Text(
+                    '$size px',
+                    style: TextStyle(fontSize: size.toDouble()),
+                  ),
+                  onTap: () {
+                    changeTextSize(size);
+                    Navigator.of(context).pop(); // 선택 후 다이얼로그 닫기
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+              },
+              child: Text('취소'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  void toggleUnderline() {
-    setState(() {
-      isUnderline = !isUnderline;
-    });
-  }
-
-  /// 텍스트 크기 변경 함수
-  void changeTextSize(double size) {
-    setState(() {
-      textSize = size;
-    });
-  }
 
   void toggleCustomKeyboard() {
     setState(() {
@@ -382,139 +813,209 @@ class _DynamicPageState extends State<DynamicPage> {
   }
 
 
+
+  void _applyStyle(quill.Attribute attribute) {
+    final selection = _quillController.selection;
+    if (selection.isCollapsed) {
+      // 선택된 텍스트가 없으면 스타일을 추가하거나 제거하지 않음
+      return;
+    }
+
+    if (_quillController.getSelectionStyle().containsKey(attribute.key)) {
+      _quillController.formatSelection(quill.Attribute.clone(attribute, null));
+    } else {
+      _quillController.formatSelection(attribute);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          Sidebar(
-            pages: pages,
-            navigateToPage: _navigateToPage,
-            addNewPage: () => _addPage(parent: null),
-          ),
-          Expanded(
-            child: Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back),
-                  onPressed: () {
-                    // 홈으로 이동
-                    FocusScope.of(context).unfocus(); // 앱바에서 뒤로가기 버튼 누르면 포커스 해제
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  },
-                ),
-                title: TextField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: '제목을 입력하세요',
+    return GestureDetector(
+      onTap: () {
+        // 화면의 아무 곳이나 클릭하면 저장
+        FocusScope.of(context).unfocus(); // 포커스 해제
+        _savePages(); // 변경사항 저장
+      },
+      child: Scaffold(
+        body: Row(
+          children: [
+            Sidebar(
+              pages: pages,
+              navigateToPage: _navigateToPage,
+              addNewPage: () => _addPage(parent: null),
+            ),
+            Expanded(
+              child: Scaffold(
+                appBar: AppBar(
+                  leading: IconButton(
+                    icon: Icon(Icons.arrow_back),
+                    onPressed: _handleSaveAndExit
                   ),
-                  style: TextStyle(color: Colors.black, fontSize: 18),
-                  onSubmitted: (newTitle) {
-                    _updatePage(newTitle, _contentController.text);
-                  },
-                ),
-                actions: [
-                  IconButton(icon: Icon(Icons.format_bold), onPressed: toggleBold),
-                  IconButton(icon: Icon(Icons.format_italic), onPressed: toggleItalic),
-                  IconButton(icon: Icon(Icons.format_underline), onPressed: toggleUnderline),
-                ],
-                backgroundColor: Colors.grey[200],
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(1),
-                  child: Container(
-                    color: Colors.grey[300],
-                    height: 1,
-                  ),
-                ),
-              ),
-              body: Column(
-                  children: [
-                    buildRecentPagesBar(),
-                    Expanded(
-                      child: TextField(
-                        controller: _contentController,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          hintText: '내용을 입력하세요',
-                          border: InputBorder.none,
-                        ),
-                        style: TextStyle(
-                          fontSize: textSize,
-                          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                          fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
-                          decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
-                        ),
-                        onChanged: (value) {
-                          _updatePage(_titleController.text, value);
-                        },
-                      ),
+                  backgroundColor: Colors.grey[200],
+
+                  title: TextField(
+                    controller: _titleController,
+                    focusNode: _titleFocusNode,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: '제목을 입력하세요',
                     ),
-                    buildNavigationBar(),
+                    style: TextStyle(color: Colors.black, fontSize: 18),
+                    onChanged: (newTitle) {
+                      // 제목 변경 시 실시간 저장 로직
+                      if (_debounce?.isActive ?? false) _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 500), () {
+                        final newContent = _quillController.document.toPlainText();
+                        if (newTitle.isNotEmpty) {
+                          _updatePage(newTitle.trim(), newContent.trim());
+                        }
+                      });
+                    },
+                    onSubmitted: (newTitle) {
+                      final newContent = _quillController.document.toPlainText();
+                      _updatePage(newTitle.trim(), newContent.trim());
+                    },
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.checklist),
+                      onPressed: toggleTodoList,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.save),
+                      onPressed: () {
+                        _savePages();
+                      },
+                    ),
                   ],
+
                 ),
+                body: Container(
+                  color: Colors.white, // 배경색을 흰색으로 설정
+                  child: Column(
+                    children: [
+                        buildRecentPagesBar(),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch, // 두 위젯의 높이를 일치시킴
+                      children: [
+                        Expanded(
+                          flex: 4, // QuillEditor가 더 많은 공간을 차지하도록 설정
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: quill.QuillEditor(
+                              controller: _quillController,
+                              scrollController: ScrollController(),
+                              focusNode: FocusNode(),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 60, // NavigationBar의 고정된 너비
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200], // NavigationBar 배경색
+                            border: Border(
+                              left: BorderSide(color: Colors.grey, width: 1), // QuillEditor와 구분하는 경계선
+                            ),
+                          ),
+                          child: Align(
+                            alignment: Alignment.center, // NavigationBar의 아이콘을 가운데 정렬
+                            child: SingleChildScrollView( // 아이콘이 많을 경우 스크롤 가능하도록 설정
+                              child: buildNavigationBar(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                ]),
+
 
               ),
             ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget buildRecentPagesBar() {
-    return Container(
-      height: 40,
-      color: Colors.grey[300],
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: pages.keys.length, // pages의 키 개수로 목록 길이 설정
-        itemBuilder: (context, index) {
-          final pageName = pages.keys.elementAt(index); // pages의 키를 가져옴
-          final isActive = pageName == widget.title;
+    final ScrollController _scrollController = ScrollController();
 
-          return Expanded(
-              child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 1), // 각 항목 간 여백
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.blue[50],
-          borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(5),
-          topRight: Radius.circular(5),
-          bottomLeft: Radius.circular(0),
-          bottomRight: Radius.circular(0),
-          ),
-          ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () => _navigateToPage(pageName), // 페이지로 이동
-                  child: Text(
-                    pageName,
-                    style: TextStyle(
-                      color: isActive ? Colors.blue : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+    // 부모-자식 관계를 반영해 페이지를 계층적으로 정렬
+    List<Widget> buildPageItems(String? parent, {int depth = 0}) {
+      List<Widget> pageItems = [];
+
+      // 현재 부모 아래의 자식들 필터링
+      pages.forEach((pageName, pageData) {
+        if (pageData['parent'] == parent) {
+          final isActive = pageName == _currentTitle;
+
+          pageItems.add(
+              GestureDetector(
+            onTap: () => _navigateToPage(pageName), // 전체 클릭 가능
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 0.2), // 각 항목 간 여백
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: isActive ? Colors.white : Colors.blue[50],
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(5),
+                  topRight: Radius.circular(5),
+                  bottomLeft: Radius.circular(0),
+                  bottomRight: Radius.circular(0),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 깊이에 따라 '>' 기호 추가
+                  if (depth > 0)
+                    Text(
+                      '▶' * depth + ' ',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 10,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis, // 말줄임표 처리
+                  GestureDetector(
+                    onTap: () => _navigateToPage(pageName), // 페이지로 이동
+                    child: Text(
+                      pageName,
+                      style: TextStyle(
+                        color: isActive ? Colors.blue : Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      overflow: TextOverflow.ellipsis, // 말줄임표 처리
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      pages.remove(pageName); // X 버튼 눌렀을 때만 삭제
-                    });
-                    _savePages(); // 상태 저장
-                  },
-                  child: const Icon(Icons.close, size: 16, color: Colors.black),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           );
-        },
+
+          // 자식 페이지도 재귀적으로 추가
+          pageItems.addAll(buildPageItems(pageName, depth: depth + 1));
+        }
+      });
+
+      return pageItems;
+    }
+
+    // 최상위 레벨 페이지(부모가 없는 페이지)부터 시작
+    List<Widget> topLevelPages = buildPageItems(null);
+
+    return Container(
+      height: 40,
+      color: Colors.grey[300],
+      child: ListView(
+        controller: _scrollController, // 스크롤 제어
+        scrollDirection: Axis.horizontal, // 수평 스크롤
+        children: topLevelPages,
       ),
     );
   }
@@ -530,55 +1031,66 @@ class _DynamicPageState extends State<DynamicPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              icon: Icon(Icons.calendar_today),
-              onPressed: toggleCalendar,
+              icon: Icon(Icons.text_format),
+              onPressed: showTextStyleDialog,
             ),
             IconButton(
-              icon: Icon(Icons.checklist),
-              onPressed: addChecklistItem,
+              icon: Icon(Icons.font_download),
+              onPressed: showFontPickerDialog,
+            ),
+            IconButton(
+              icon: Icon(Icons.format_bold),
+              onPressed: () {
+                setState(() {
+                  isBold = !isBold;
+                  _applyStyle(quill.Attribute.bold);
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.format_italic),
+              onPressed: () {
+                setState(() {
+                  isItalic = !isItalic;
+                  _applyStyle(quill.Attribute.italic);
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.format_underline),
+              onPressed: () {
+                setState(() {
+                  isUnderline = !isUnderline;
+                  _applyStyle(quill.Attribute.underline);
+                });
+              },
             ),
             IconButton(
               icon: Icon(Icons.add_circle),
               onPressed: () => _addPage(parent: widget.title),
             ),
             IconButton(
+              icon: Icon(Icons.format_align_left),
+              onPressed: alignLeft,
+            ),
+            IconButton(
+              icon: Icon(Icons.format_align_center),
+              onPressed: alignCenter,
+            ),
+            IconButton(
+              icon: Icon(Icons.format_align_right),
+              onPressed: alignRight,
+            ),
+            IconButton(
+              icon: Icon(Icons.format_align_justify),
+              onPressed: alignJustify,
+            ),
+            IconButton(
               icon: Icon(Icons.format_size),
-              onPressed: () => showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('텍스트 크기 조절'),
-                  content: Slider(
-                    value: textSize,
-                    min: 10,
-                    max: 40,
-                    divisions: 6,
-                    label: textSize.round().toString(),
-                    onChanged: changeTextSize,
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text('확인'),
-                    ),
-                  ],
-                ),
-              ),
+              onPressed: showFontSizeDialog, // 다이얼로그 호출
             ),
-            IconButton(
-              icon: Icon(Icons.format_bold),
-              onPressed: toggleBold,
-              color: isBold ? Colors.blue : Colors.black,
-            ),
-            IconButton(
-              icon: Icon(Icons.format_italic),
-              onPressed: toggleItalic,
-              color: isItalic ? Colors.blue : Colors.black,
-            ),
-            IconButton(
-              icon: Icon(Icons.format_underline),
-              onPressed: toggleUnderline,
-              color: isUnderline ? Colors.blue : Colors.black,
-            ),
+
+
             IconButton(
               icon: Icon(Icons.format_list_bulleted),
               onPressed: insertBulletPoint,
@@ -588,25 +1100,17 @@ class _DynamicPageState extends State<DynamicPage> {
               onPressed: insertNumberedList,
             ),
             IconButton(
-              icon: Icon(isEditing ? Icons.check : Icons.edit),
-              onPressed: isEditing ? _savePages : () => setState(() => isEditing = true),
-            ),
-            IconButton(
               icon: Icon(Icons.keyboard),
               onPressed: toggleCustomKeyboard,
             ),
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: widget.onDelete,
+              onPressed: _deletePage,
             ),
           ],
         ),
       ),
     );
   }
-
-
 }
-
-
 

@@ -51,35 +51,49 @@ class _SidebarState extends State<Sidebar> {
 
     return chevrons;
   }
+  void _deletePage(String pageName) {
+    void deleteWithChildren(String page) {
+      final children = widget.pages.entries
+          .where((entry) => entry.value['parent'] == page)
+          .map((entry) => entry.key)
+          .toList();
+      for (final child in children) {
+        deleteWithChildren(child);
+      }
+      widget.pages.remove(page);
+    }
+
+    setState(() {
+      deleteWithChildren(pageName);
+    });
+  }
 
   Widget buildSidebarPages() {
-    // 부모-자식 관계를 반영해 페이지를 계층적으로 정렬
     List<Widget> buildPageItems(String? parent) {
       List<Widget> pageItems = [];
 
-      // 현재 부모 아래의 자식들 필터링
       widget.pages.forEach((pageName, pageData) {
         if (pageData['parent'] == parent) {
           pageItems.add(
             ListTile(
               leading: Row(
-                mainAxisSize: MainAxisSize.min, // 크기를 내용에 맞춤
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  ..._buildChevronIcons(pageData['parent']), // 부모 계층 아이콘 추가
-                  Icon(Icons.description_outlined, color: Color(0xFF91918E)), // 마지막 아이콘
+                  ..._buildChevronIcons(pageData['parent']),
+                  Icon(Icons.description_outlined, color: Color(0xFF91918E)),
                 ],
               ),
               title: isSidebarOpen ? Text(pageName) : null,
               onTap: () => widget.navigateToPage(pageName),
             ),
           );
-          // 자식의 자식들도 추가
           pageItems.addAll(buildPageItems(pageName));
         }
       });
 
       return pageItems;
     }
+
 
     // 최상위 레벨 페이지(부모가 없는 페이지)부터 시작
     List<Widget> topLevelPages = [];
@@ -194,16 +208,6 @@ class _SidebarState extends State<Sidebar> {
           Divider(),
           Expanded(
             child: buildSidebarPages(), // 최상위부터 계층적으로 페이지 표시
-          ),
-
-        Spacer(),
-          _buildSidebarItem(
-            icon: Icons.delete,
-            label: '휴지통',
-          ),
-          _buildSidebarItem(
-            icon: Icons.settings,
-            label: '설정',
           ),
         ],
       ),
