@@ -876,64 +876,53 @@ class _DynamicPageState extends State<DynamicPage> {
                       _updatePage(newTitle.trim(), newContent.trim());
                     },
                   ),
-                  actions: [
-                    IconButton(
-                      icon: Icon(Icons.checklist),
-                      onPressed: toggleTodoList,
+                ),
+                body: Row(
+                  children: [
+                    // Container (buildRecentPagesBar + QuillEditor)
+                    Expanded(
+                      flex: 4, // Container가 대부분의 공간을 차지
+                      child: Container(
+                        color: Colors.white, // 배경색을 흰색으로 설정
+                        child: Column(
+                          children: [
+                            // Recent Pages Bar
+                            buildRecentPagesBar(),
+                            // Quill Editor
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: quill.QuillEditor(
+                                  controller: _quillController,
+                                  scrollController: ScrollController(),
+                                  focusNode: FocusNode(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.save),
-                      onPressed: () {
-                        _savePages();
-                      },
+                    // NavigationBar
+                    Container(
+                      width: 60, // NavigationBar의 고정된 너비
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200], // NavigationBar 배경색
+                        border: Border(
+                          left: BorderSide(color: Colors.grey, width: 1), // QuillEditor와 구분하는 경계선
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.center, // NavigationBar의 아이콘을 가운데 정렬
+                        child: SingleChildScrollView( // 아이콘이 많을 경우 스크롤 가능하도록 설정
+                          child: buildNavigationBar(),
+                        ),
+                      ),
                     ),
                   ],
-
                 ),
-                body: Container(
-                  color: Colors.white, // 배경색을 흰색으로 설정
-                  child: Column(
-                    children: [
-                        buildRecentPagesBar(),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch, // 두 위젯의 높이를 일치시킴
-                      children: [
-                        Expanded(
-                          flex: 4, // QuillEditor가 더 많은 공간을 차지하도록 설정
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: quill.QuillEditor(
-                              controller: _quillController,
-                              scrollController: ScrollController(),
-                              focusNode: FocusNode(),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          width: 60, // NavigationBar의 고정된 너비
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200], // NavigationBar 배경색
-                            border: Border(
-                              left: BorderSide(color: Colors.grey, width: 1), // QuillEditor와 구분하는 경계선
-                            ),
-                          ),
-                          child: Align(
-                            alignment: Alignment.center, // NavigationBar의 아이콘을 가운데 정렬
-                            child: SingleChildScrollView( // 아이콘이 많을 경우 스크롤 가능하도록 설정
-                              child: buildNavigationBar(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                ]),
-
 
               ),
-            ),
             ),
           ],
         ),
@@ -1031,14 +1020,6 @@ class _DynamicPageState extends State<DynamicPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
-              icon: Icon(Icons.text_format),
-              onPressed: showTextStyleDialog,
-            ),
-            IconButton(
-              icon: Icon(Icons.font_download),
-              onPressed: showFontPickerDialog,
-            ),
-            IconButton(
               icon: Icon(Icons.format_bold),
               onPressed: () {
                 setState(() {
@@ -1098,10 +1079,6 @@ class _DynamicPageState extends State<DynamicPage> {
             IconButton(
               icon: Icon(Icons.format_list_numbered),
               onPressed: insertNumberedList,
-            ),
-            IconButton(
-              icon: Icon(Icons.keyboard),
-              onPressed: toggleCustomKeyboard,
             ),
             IconButton(
               icon: Icon(Icons.delete),

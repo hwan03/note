@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../calender.dart';
+import '../calendar.dart';
 import '../home.dart';
 import '../widgets/dynamic_page.dart';
 import '../to_do.dart';
 import '../search.dart';
+import '../web_link.dart';
 
 class Sidebar extends StatefulWidget {
   final Map<String, Map<String, dynamic>> pages; // 페이지 목록
@@ -198,6 +199,17 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.language,
             label: '대외 웹사이트',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => WebLinkPage(
+                      pages: widget.pages,
+                      navigateToPage: widget.navigateToPage,
+                      addNewPage: widget.addNewPage,
+                    )),
+              );
+            },
           ),
           _buildSidebarItem(
             icon: Icons.add,

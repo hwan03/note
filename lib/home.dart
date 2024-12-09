@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:new_flutter/state/scheduleState.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'widgets/todo_data.dart';
 import 'widgets/summary_chart.dart';
+import 'package:new_flutter/widgets/buildSchedule.dart';
 import 'widgets/sidebar.dart';
 import 'widgets/dynamic_page.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => ToDoData(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ToDoData()),
+        ChangeNotifierProvider(create: (context) => ScheduleState()),
+      ],
       child: MyApp(),
     ),
   );
@@ -24,6 +30,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
+      locale: Locale('ko', 'KR'), // 한국어 설정
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        Locale('ko', 'KR'), // 한국어 지원
+        Locale('en', 'US'), // 기본 영어
+      ],
       home: HomeScreen(),
     );
   }
@@ -201,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheduleState = Provider.of<ScheduleState>(context, listen: true);
     return Scaffold(
       body: Row(
         children: [
@@ -309,37 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '일정',
-                            child: ListView.builder(
-                              itemCount: 3,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Row(
-                                    children: const [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Text('월요일 11월 6일',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.w500)),
-                                      ),
-                                      Expanded(
-                                        flex: 3,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text('○○ 미팅'),
-                                            Text('9AM',
-                                                style: TextStyle(
-                                                    color: Colors.grey)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                            child: BuildSchedule(scheduleState: scheduleState,isHome: true,)
                           ),
                         ),
                       ],
