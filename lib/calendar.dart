@@ -11,12 +11,12 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class CalendarPage extends StatefulWidget {
-  final List<String> recentPages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 새 페이지 추가 함수
 
   const CalendarPage({
-    required this.recentPages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -27,25 +27,6 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  List<String> recentPages = ['Page 1', 'Page 2']; // 더미 데이터
-  int pageCounter = 3; // 새 페이지 번호 관리
-
-  void navigateToPage(String pageName) {
-    // 페이지 이동 처리
-    print('Navigating to $pageName'); // 실제 페이지 이동 로직 대신 로그 출력
-    widget.navigateToPage(pageName);
-  }
-
-
-  void addNewPage() {
-    // 새 페이지 추가
-    setState(() {
-      final newPageName = 'Page $pageCounter';
-      pageCounter++;
-      recentPages.insert(0, newPageName);
-    });
-    widget.addNewPage();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +37,7 @@ class _CalendarPageState extends State<CalendarPage> {
       ),
       child: Scaffold(
         body: CalendarScreen(
-          recentPages: widget.recentPages,
+          pages: widget.pages,
           navigateToPage: widget.navigateToPage,
           addNewPage: widget.addNewPage,
         ),
@@ -66,16 +47,16 @@ class _CalendarPageState extends State<CalendarPage> {
 }
 
 class CalendarScreen extends StatefulWidget {
-  final List<String> recentPages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages;// 추가
+final Function(String) navigateToPage;
+final VoidCallback addNewPage;
 
-  const CalendarScreen({
-    required this.recentPages,
-    required this.navigateToPage,
-    required this.addNewPage,
-    super.key,
-  });
+const CalendarScreen({
+  required this.pages,
+  required this.navigateToPage,
+  required this.addNewPage,
+  Key? key,
+}) : super(key: key);
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
@@ -192,7 +173,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Sidebar(
-            recentPages: widget.recentPages,
+            pages: widget.pages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ),
