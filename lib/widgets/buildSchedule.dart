@@ -210,7 +210,7 @@ class _BuildScheduleState extends State<BuildSchedule> {
       // 해당 날짜에 일정이 없을 경우
       return [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.fromLTRB(0, 4, 0, 32),
           child: Text(
             "일정이 없습니다",
             style: TextStyle(

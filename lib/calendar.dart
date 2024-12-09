@@ -351,6 +351,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         index: targetIndex,
         duration : Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
         curve: Curves.easeInOutCubic,
+        alignment: 0.01,
       );
     }
   }
