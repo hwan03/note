@@ -36,6 +36,7 @@ class _CalendarPageState extends State<CalendarPage> {
     widget.navigateToPage(pageName);
   }
 
+
   void addNewPage() {
     // 새 페이지 추가
     setState(() {
