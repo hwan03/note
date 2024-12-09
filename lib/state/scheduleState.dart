@@ -119,9 +119,6 @@ class ScheduleState extends ChangeNotifier {
     required String tagName,
     required bool isAdding,
   }) {
-    print("Before updateIndex - dateIndex: $dateIndex");
-    print("Before updateIndex - tagEventIndex: $tagEventIndex");
-
     // 시작 날짜부터 종료 날짜까지 인덱스를 업데이트합니다.
     DateTime currentDate = startDate;
     while (currentDate.isBefore(endDate) ||
@@ -154,8 +151,6 @@ class ScheduleState extends ChangeNotifier {
 
       currentDate = currentDate.add(Duration(days: 1));
     }
-    print("after updateIndex - dateIndex: $dateIndex");
-    print("after updateIndex - tagEventIndex: $tagEventIndex");
 
   }
 
