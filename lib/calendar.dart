@@ -8,6 +8,7 @@ import 'package:new_flutter/widgets/buildSchedule.dart';
 import 'package:new_flutter/widgets/sidebar.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class CalendarPage extends StatefulWidget {
   final List<String> recentPages;
@@ -44,6 +45,7 @@ class _CalendarPageState extends State<CalendarPage> {
     });
     widget.addNewPage();
   }
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -102,6 +104,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
+  final ScrollController scrollController = ScrollController();
+  final Map<DateTime, GlobalKey> dateKeys = {};
 
   Future<void> _showCustomDateTimePicker(
       BuildContext context, bool isStart) async {
@@ -170,6 +174,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     });
   }
+
+  @override
+  void dispose() {
+    // ScrollController는 수명 주기가 끝날 때 반드시 dispose 해야 메모리 누수를 방지할 수 있습니다.
+    scrollController.dispose();
+    _editingController.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +266,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 setState(() {
                                   _selectedDate = selectedDay;
                                   _focusedDate = focusedDay;
+                                  scrollToDate(selectedDay);
+                                  // 해당 날짜로 스크롤
                                 });
                               },
                               onPageChanged: (focusedDay) {
@@ -321,7 +336,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       label: '일정',
                       child: scheduleState.isCreatingEvent
                           ? _buildEventEditor()
-                          : BuildSchedule(scheduleState: scheduleState,),
+                          : BuildSchedule(
+                        scheduleState: scheduleState,
+                            ),
                     ),
                   ),
                 ],
@@ -332,6 +349,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+
+    void scrollToDate(date){
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final scheduleState = context.read<ScheduleState>();
+
+        var strippedDate = scheduleState.stripTime(date);
+        final targetKey = dateKeys[strippedDate];
+        if (dateKeys.containsKey(strippedDate)) {
+          if (targetKey?.currentContext != null) {
+            Scrollable.ensureVisible(
+              targetKey!.currentContext!,
+              duration: Duration(milliseconds: 300),
+              alignment: 0.1,
+              curve: Curves.easeInOut,
+            );
+          }
+        }
+      });
+    }
 
   /// 예정된 일정 화면
 
@@ -415,7 +451,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 // if(!scheduleState.isEditing)
                 IconButton(
                   icon: Icon(Icons.add_outlined, color: Colors.black),
-                  onPressed: scheduleState.tags.length < 5 ? scheduleState.addTag : null,
+                  onPressed: scheduleState.tags.length < 5
+                      ? scheduleState.addTag
+                      : null,
                 ),
               ],
             ),
@@ -452,7 +490,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       ),
                     ),
-                    if(!scheduleState.isEditing)
+                    if (!scheduleState.isEditing)
                       IconButton(
                         icon: Icon(Icons.close, color: Colors.grey),
                         onPressed: scheduleState.tags.length > 1
@@ -463,22 +501,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     return AlertDialog(
                                       title: Text(
                                         '해당 태그를 삭제하시겠습니까?\n일정이 삭제됩니다!',
-                                        textAlign: TextAlign.center, // 텍스트 가운데 정렬
+                                        textAlign:
+                                            TextAlign.center, // 텍스트 가운데 정렬
                                         style: TextStyle(fontSize: 18),
                                       ),
                                       actions: [
                                         TextButton(
                                           onPressed: () {
-                                            Navigator.of(context).pop(); // 팝업 닫기
+                                            Navigator.of(context)
+                                                .pop(); // 팝업 닫기
                                           },
                                           child: Text('취소'),
                                         ),
                                         TextButton(
                                           onPressed: () {
                                             setState(() {
-                                              scheduleState.deleteTag(index); // 태그 삭제 함수 호출
+                                              scheduleState.deleteTag(
+                                                  index); // 태그 삭제 함수 호출
                                             });
-                                            Navigator.of(context).pop(); // 팝업 닫기
+                                            Navigator.of(context)
+                                                .pop(); // 팝업 닫기
                                           },
                                           child: Text('확인'),
                                         ),
@@ -649,11 +691,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // 텍스트 필드 편집 컨트롤러
   final TextEditingController _editingController = TextEditingController();
 
-  @override
-  void dispose() {
-    _editingController.dispose();
-    super.dispose();
-  }
 
   Widget _buildDateTimePickerField(
     BuildContext context, {
@@ -699,7 +736,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
   }
-
 
   void editTagNameDialog(int index) {
     final scheduleState = context.read<ScheduleState>();
@@ -763,8 +799,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       },
     );
   }
-
-
 }
 
 class ArrowClipper extends CustomClipper<Path> {
