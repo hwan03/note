@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:new_flutter/state/scheduleState.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:provider/provider.dart';
-import 'package:new_flutter/widgets/dynamic_page.dart';
-import 'package:new_flutter/widgets/sidebar.dart';
 import 'widgets/todo_data.dart';
 import 'widgets/summary_chart.dart';
 import 'package:new_flutter/widgets/buildSchedule.dart';
+import 'widgets/sidebar.dart';
+import 'widgets/dynamic_page.dart';
 
 void main() {
   runApp(
@@ -51,81 +53,166 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ToDoData toDoData = ToDoData(); // ToDoData 인스턴스 생성
 
-  List<String> recentPages = []; // 최근 페이지 목록
-  Map<String, String> pageContents = {}; // 페이지 제목과 내용의 Map 선언
-  int pageCounter = 1; // 페이지 숫자 관리
-  ScrollController _recentPagesController = ScrollController();
+  Map<String, Map<String, dynamic>> pages = {
+    'Home': {'content': 'Welcome to Home', 'parent': null},
+  };
 
-  void addNewPage() {
-    setState(() {
-      final newPageName = 'Page $pageCounter';
-      pageCounter++;
-      recentPages.insert(0, newPageName);
-      pageContents[newPageName] = '';
-    });
-    navigateToPage(recentPages.first); // 새 페이지로 이동
+  @override
+  void initState() {
+    super.initState();
+    _loadPages(); // 앱 시작 시 저장된 데이터 불러오기
   }
 
-  //setState(() {
-  //       recentPages.add(pageName);
-  //     });
-  //
-  // import 'package:flutter/material.dart';
-  //
-  // void main() {
-  //   runApp(MyApp());
-  // } 이거로 하면 최근 페이지부터 나오는거 아님
+  Future<void> _loadPages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedPages = prefs.getString('pages');
 
-  // 페이지 제목 수정 시 최근 페이지 목록과 동기화
-  void updatePage(String oldTitle, String newTitle, String newContent) {
+    if (storedPages != null) {
+      setState(() {
+        pages = Map<String, Map<String, dynamic>>.from(
+          jsonDecode(storedPages).map(
+              (key, value) => MapEntry(key, Map<String, dynamic>.from(value))),
+        );
+      });
+    }
+  }
+
+  Future<void> _savePages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pages', jsonEncode(pages));
+    setState(() {}); // 저장 후 상태를 강제로 다시 반영
+  }
+
+  void addNewPage({String? parent}) async {
+    String newPageName;
+
+    // 숫자만 추출하고 정렬
+    List<int> pageNumbers = pages.keys
+        .where(
+            (key) => RegExp(r'^Page (\d+)$').hasMatch(key)) // "Page X" 형식 필터링
+        .map((key) =>
+            int.parse(RegExp(r'^Page (\d+)$').firstMatch(key)!.group(1)!))
+        .toList()
+      ..sort();
+
+    // 비어 있는 숫자 찾기
+    int? missingNumber;
+    for (int i = 1; i <= pageNumbers.length; i++) {
+      if (!pageNumbers.contains(i)) {
+        missingNumber = i;
+        break;
+      }
+    }
+
+    // 비어 있는 숫자가 있으면 사용, 없으면 다음 숫자로 설정
+    if (missingNumber != null) {
+      newPageName = 'Page $missingNumber';
+    } else {
+      newPageName = 'Page ${pageNumbers.isEmpty ? 1 : pageNumbers.last + 1}';
+    }
+
     setState(() {
-      pageContents.remove(oldTitle); // 기존 제목 제거
-      pageContents[newTitle] = newContent; // 새 제목과 내용 추가
+      pages[newPageName] = {'content': '', 'parent': parent};
+    });
 
-      int index = recentPages.indexOf(oldTitle);
-      if (index != -1) {
-        recentPages[index] = newTitle; // 최근 페이지에서 제목 변경
+    // 비동기 저장
+    await _savePages();
+
+    _navigateToPage(newPageName);
+  }
+
+  void _updatePage(String oldTitle, String newTitle, String content) {
+    setState(() {
+      if (oldTitle != newTitle) {
+        pages.forEach((key, value) {
+          if (value['parent'] == oldTitle) {
+            value['parent'] = newTitle;
+          }
+        });
+        pages[newTitle] = pages.remove(oldTitle)!;
+      }
+      pages[newTitle]!['content'] = content;
+    });
+    _savePages();
+  }
+
+  void _deletePage(String title) {
+    void _deleteWithChildren(String pageName) {
+      final children = pages.entries
+          .where((entry) => entry.value['parent'] == pageName)
+          .map((entry) => entry.key)
+          .toList();
+      for (final child in children) {
+        _deleteWithChildren(child);
+      }
+      pages.remove(pageName);
+    }
+
+    setState(() {
+      _deleteWithChildren(title);
+    });
+    _savePages();
+  }
+
+  void _navigateToPage(String pageName) {
+    setState(() {
+      // 해당 페이지를 목록의 맨 앞으로 이동
+      final pageData = pages.remove(pageName);
+      if (pageData != null) {
+        pages = {pageName: pageData, ...pages};
       }
     });
-  }
+    _savePages().then((_) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DynamicPage(
+            title: pageName,
+            onUpdate: (updatedTitle, updatedContent) {
+              setState(() {
+                if (updatedTitle != pageName) {
+                  // 제목 변경 반영 및 순서 업데이트
+                  final pageData = pages.remove(pageName);
+                  if (pageData != null) {
+                    pageData['content'] = updatedContent;
+                    pages = {
+                      updatedTitle: pageData,
+                      ...pages,
+                    };
+                  }
+                } else {
+                  // 내용만 업데이트
+                  pages[pageName]!['content'] = updatedContent;
 
-  // 페이지 삭제
-  void deletePage(String pageName) {
-    setState(() {
-      pageContents.remove(pageName); // 해당 페이지 내용 제거
-      recentPages.remove(pageName); // 해당 페이지를 최근 페이지에서 제거
-    });
-    Navigator.popUntil(context, (route) => route.isFirst);
-  }
-
-  void navigateToPage(String pageName) {
-    FocusScope.of(context).unfocus(); // 현재 페이지 포커스 해제 및 데이터 저장
-    setState(() {
-      if (!pageContents.containsKey(pageName)) {
-        pageContents[pageName] = ''; // 새 페이지 내용 초기화
-      }
-    });
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DynamicPage(
-          title: pageName,
-          content: pageContents[pageName] ?? '',
-          recentPages: recentPages,
-          navigateToPage: navigateToPage,
-          onUpdate: (newTitle, newContent) {
-            setState(() {
-              final index = recentPages.indexOf(pageName);
-              if (index != -1) recentPages[index] = newTitle;
-              pageContents.remove(pageName);
-              pageContents[newTitle] = newContent;
-            });
-          },
-          onDelete: () => deletePage(pageName),
-          addNewPage: addNewPage, // addNewPage 추가
+                  // 페이지를 최근으로 이동
+                  final pageData = pages.remove(pageName);
+                  if (pageData != null) {
+                    pages = {pageName: pageData, ...pages};
+                  }
+                }
+              });
+              _savePages(); // 변경 저장
+            },
+            onDelete: () {
+              _deletePage(pageName);
+              Navigator.pop(context); // 페이지 삭제 후 뒤로 이동
+            },
+            onAddPage: (newPageName, parent) {
+              addNewPage(parent: parent);
+            },
+          ),
         ),
-      ),
-    );
+      );
+    });
+  }
+  String _getCurrentDateWithDay() {
+    final DateTime now = DateTime.now();
+    const List<String> weekdays = [
+      '일', '월', '화', '수', '목', '금', '토'
+    ];
+    final String dayName = weekdays[now.weekday % 7]; // 요일 가져오기
+
+    return '${now.year}.${now.month.toString().padLeft(2, '0')}.${now.day.toString().padLeft(2, '0')} ($dayName)';
   }
 
   @override
@@ -135,11 +222,10 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Row(
         children: [
           Sidebar(
-            recentPages: recentPages,
-            navigateToPage: navigateToPage,
+            pages: pages,
+            navigateToPage: _navigateToPage,
             addNewPage: addNewPage,
           ),
-          // Main Content
           Expanded(
             child: Container(
               color: Colors.white,
@@ -147,22 +233,25 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('최근 페이지',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                  SizedBox(height: 10),
-                  Expanded(
-                    flex: 2,
-                    child: GridView.builder(
+                _buildLabeledBox(
+                label: '최근 페이지',
+                child: SizedBox(
+                  height: 300, // 고정된 높이 설정
+
+                  child: GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
                         crossAxisSpacing: 10,
                         mainAxisSpacing: 10,
                       ),
-                      itemCount: recentPages.length,
+
+                      //밑에거하면 인라인 페이지도 홈 목록에 다 나옴
+                      itemCount: pages.length.clamp(0, 4),
                       itemBuilder: (context, index) {
-                        final pageName = recentPages[index];
+                        String pageName = pages.keys.toList()[index];
+
                         return GestureDetector(
-                          onTap: () => navigateToPage(pageName), // 페이지 선택 시 이동
+                          onTap: () => _navigateToPage(pageName), // 페이지 선택 시 이동
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border.all(color: Color(0xFFF2F1EE)),
@@ -198,12 +287,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          recentPages[index],
+                                          pageName,
                                           style: TextStyle(
                                               fontWeight: FontWeight.bold),
                                         ),
-                                        Text('2024.01.15'),
-                                      ]),
+                                        Text(
+                                          _getCurrentDateWithDay(), // 현재 날짜와 시간을 표시
+                                        ),
+                        ]),
                                 )
                               ],
                             ),
@@ -212,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-                  SizedBox(height: 20),
+              ),SizedBox(height: 20),
                   Expanded(
                     flex: 3,
                     child: Row(

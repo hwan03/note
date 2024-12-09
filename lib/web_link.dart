@@ -3,12 +3,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'widgets/sidebar.dart'; // Sidebar import
 
 class WebLinkPage extends StatelessWidget {
-  final List<String> recentPages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 새 페이지 추가 함수
+
 
   WebLinkPage({
-    required this.recentPages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -39,7 +40,7 @@ class WebLinkPage extends StatelessWidget {
       body: Row(
         children: [
           Sidebar(
-            recentPages: recentPages,
+            pages: pages,
             navigateToPage: navigateToPage,
             addNewPage: addNewPage,
           ),

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'widgets/sidebar.dart'; // Sidebar 위젯을 가져옴
 
 class SearchPage extends StatefulWidget {
-  final List<String> recentPages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 새 페이지 추가 함수
 
   const SearchPage({
-    required this.recentPages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -56,7 +56,7 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           // 사이드바 유지
           Sidebar(
-            recentPages: widget.recentPages,
+            pages: widget.pages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ),
