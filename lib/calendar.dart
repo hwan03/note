@@ -104,8 +104,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
-  final ScrollController scrollController = ScrollController();
-  final Map<DateTime, GlobalKey> dateKeys = {};
+  final  scrollController = ItemScrollController();
 
   Future<void> _showCustomDateTimePicker(
       BuildContext context, bool isStart) async {
@@ -178,7 +177,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void dispose() {
     // ScrollController는 수명 주기가 끝날 때 반드시 dispose 해야 메모리 누수를 방지할 수 있습니다.
-    scrollController.dispose();
     _editingController.dispose();
     super.dispose();
   }
@@ -335,9 +333,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: _buildLabeledBox(
                       label: '일정',
                       child: scheduleState.isCreatingEvent
-                          ? _buildEventEditor()
+                        ? _buildEventEditor()
                           : BuildSchedule(
                         scheduleState: scheduleState,
+                        scrollController: scrollController,
+                        selectedDate: _selectedDate,
                             ),
                     ),
                   ),
@@ -350,24 +350,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-    void scrollToDate(date){
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final scheduleState = context.read<ScheduleState>();
+  void scrollToDate(DateTime date) {
+    final scheduleState = context.read<ScheduleState>();
+    final sortedDates = scheduleState.dateIndex.keys.toList()..sort();
+    final strippedDate = scheduleState.stripTime(date);
 
-        var strippedDate = scheduleState.stripTime(date);
-        final targetKey = dateKeys[strippedDate];
-        if (dateKeys.containsKey(strippedDate)) {
-          if (targetKey?.currentContext != null) {
-            Scrollable.ensureVisible(
-              targetKey!.currentContext!,
-              duration: Duration(milliseconds: 300),
-              alignment: 0.1,
-              curve: Curves.easeInOut,
-            );
-          }
-        }
-      });
+    if (!sortedDates.contains(strippedDate)) {
+      sortedDates.add(strippedDate);
+      sortedDates.sort();
     }
+
+    // 선택된 날짜의 인덱스 계산ㄴㄴ
+    final targetIndex = sortedDates.indexOf(strippedDate);
+
+    // 스크롤 실행
+    if (scrollController.isAttached) {
+      scrollController.scrollTo(
+        index: targetIndex,
+        duration : Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
 
   /// 예정된 일정 화면
 

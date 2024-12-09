@@ -8,25 +8,36 @@ class BuildSchedule extends StatefulWidget {
   final bool isHome;
   final scrollController;
   final positionsListener;
+  final DateTime? selectedDate; // 선택된 날짜
 
   const BuildSchedule(
       {required this.scheduleState,
-        this.isHome = false,
-        this.scrollController,
-        this.positionsListener,
-        super.key});
+      this.isHome = false,
+      this.scrollController,
+      this.positionsListener,
+      this.selectedDate,
+      super.key});
 
   @override
   State<BuildSchedule> createState() => _BuildScheduleState();
 }
 
 class _BuildScheduleState extends State<BuildSchedule> {
-
-
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
     // ScheduleState 구독
     final sortedDates = widget.scheduleState.dateIndex.keys.toList()..sort();
+
+    if (widget.selectedDate != null &&
+        !sortedDates
+            .contains(widget.scheduleState.stripTime(widget.selectedDate!))) {
+      sortedDates.add(widget.selectedDate!);
+      sortedDates.sort();
+    }
+
+    // 선택된 날짜가 있고, 일정이 없으면 추가
+
     // 날짜별로 정렬된 이벤트
     if (sortedDates.isEmpty) {
       return Stack(children: [
@@ -69,15 +80,14 @@ class _BuildScheduleState extends State<BuildSchedule> {
           padding: widget.isHome
               ? EdgeInsets.fromLTRB(8, 0, 8, 0)
               : const EdgeInsets.all(16.0),
-          itemCount: sortedDates.length,
+          itemCount:  sortedDates.length + (widget.isHome ? 0:1),
           itemBuilder: (context, dateIndex) {
+            if (!widget.isHome && dateIndex == sortedDates.length) {
+              return SizedBox(
+                height: screenHeight * 0.8, // Stack의 절반 높이
+              );
+            }
             final date = sortedDates[dateIndex];
-            // final eventIds = widget.scheduleState
-            //     .getEventsForDay(date); // 해당 날짜의 이벤트 id 목록 가져오기
-            // final events =
-            //     eventIds.map((id) => widget.scheduleState.events[id]).toList();
-
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -114,189 +124,7 @@ class _BuildScheduleState extends State<BuildSchedule> {
                   ),
                 ),
 
-
-                // 해당 날짜의 이벤트 목록
-                // ...eventIds.asMap().entries.map((entry) {
-                //   final int index = entry.key;
-                //   final String eventId = entry.value;
-                //   final event = events[index];
-                //
-                //   final eventStartDate = event?['startDate'];
-                //   final eventEndDate = event?['endDate'];
-                //   final adjustedStart = date.isAtSameMomentAs(
-                //           widget.scheduleState.stripTime(eventStartDate))
-                //       ? eventStartDate
-                //       : DateTime(date.year, date.month, date.day, 0, 0);
-                //   final adjustedEnd = date.isAtSameMomentAs(
-                //           widget.scheduleState.stripTime(eventEndDate))
-                //       ? eventEndDate
-                //       : DateTime(date.year, date.month, date.day, 23, 59);
-                //
-                //   return Padding(
-                //     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                //     child: Container(
-                //       decoration: BoxDecoration(
-                //         color: Colors.white,
-                //         borderRadius: BorderRadius.circular(12),
-                //         boxShadow: [
-                //           BoxShadow(
-                //             color: Colors.grey.withOpacity(0.2),
-                //             blurRadius: 6,
-                //             offset: Offset(0, 3),
-                //           ),
-                //         ],
-                //       ),
-                //       child: IntrinsicHeight(
-                //         child: Row(
-                //           crossAxisAlignment: CrossAxisAlignment.stretch,
-                //           children: [
-                //             // 태그 색상 표시q
-                //             Container(
-                //               width: 8,
-                //               decoration: BoxDecoration(
-                //                 color: event?['tag']['color'],
-                //                 borderRadius: BorderRadius.only(
-                //                   topLeft: Radius.circular(12),
-                //                   bottomLeft: Radius.circular(12),
-                //                 ),
-                //               ),
-                //             ),
-                //             Expanded(
-                //               child: Padding(
-                //                 padding: const EdgeInsets.all(12.0),
-                //                 child: Column(
-                //                   crossAxisAlignment: CrossAxisAlignment.start,
-                //                   children: [
-                //                     // 일정 제목
-                //                     Row(
-                //                       children: [
-                //                         Text(
-                //                           event?['title'],
-                //                           style: TextStyle(
-                //                             fontSize: widget.isHome ? 12 : 16,
-                //                             fontWeight: FontWeight.bold,
-                //                             color: Colors.black,
-                //                           ),
-                //                         ),
-                //                         Spacer(),
-                //                         if (!widget.isHome) ...[
-                //                           IconButton(
-                //                             icon: Icon(
-                //                               Icons.edit,
-                //                               color: Colors.grey,
-                //                             ),
-                //                             onPressed: () {
-                //                               widget.scheduleState
-                //                                   .editMode(eventId: eventId);
-                //                             },
-                //                             padding: EdgeInsets.zero,
-                //                             constraints: BoxConstraints(),
-                //                             hoverColor: Colors.transparent,
-                //                             highlightColor: Colors.transparent,
-                //                             // 클릭할 때 하이라이트 효과 제거
-                //                             splashColor: Colors
-                //                                 .transparent, // 스플래시 효과 제거
-                //                           ),
-                //                           SizedBox(
-                //                             width: 5,
-                //                           ),
-                //                           IconButton(
-                //                             icon: Icon(
-                //                               Icons.close_outlined,
-                //                               color: Colors.grey,
-                //                             ),
-                //                             onPressed: () {
-                //                               if (widget.scheduleState.events
-                //                                   .containsKey(eventId)) {
-                //                                 showDialog(
-                //                                   context: context,
-                //                                   builder:
-                //                                       (BuildContext context) {
-                //                                     return AlertDialog(
-                //                                       title: Text(
-                //                                         '일정을 삭제하시겠습니까?',
-                //                                         textAlign:
-                //                                             TextAlign.center,
-                //                                         style: TextStyle(
-                //                                             fontSize: 18),
-                //                                       ),
-                //                                       actions: [
-                //                                         TextButton(
-                //                                           onPressed: () {
-                //                                             Navigator.of(
-                //                                                     context)
-                //                                                 .pop(); // 팝업 닫기
-                //                                           },
-                //                                           child: Text('취소'),
-                //                                         ),
-                //                                         TextButton(
-                //                                           onPressed: () {
-                //                                             setState(() {
-                //                                               widget
-                //                                                   .scheduleState
-                //                                                   .deleteEvent(
-                //                                                       eventId:
-                //                                                           eventId); // 이벤트 삭제 함수 호출
-                //                                             });
-                //                                             Navigator.of(
-                //                                                     context)
-                //                                                 .pop(); // 팝업 닫기
-                //                                           },
-                //                                           child: Text('확인'),
-                //                                         ),
-                //                                       ],
-                //                                     );
-                //                                   },
-                //                                 );
-                //                               }
-                //                             },
-                //                             padding: EdgeInsets.zero,
-                //                             constraints: BoxConstraints(),
-                //                             hoverColor: Colors.transparent,
-                //                             highlightColor: Colors.transparent,
-                //                             // 클릭할 때 하이라이트 효과 제거
-                //                             splashColor: Colors
-                //                                 .transparent, // 스플래시 효과 제거
-                //                           ),
-                //                         ],
-                //                       ],
-                //                     ),
-                //                     SizedBox(height: 4),
-                //                     // 일정 설명
-                //                     Text(
-                //                       event?['description'] ?? '',
-                //                       style: TextStyle(
-                //                         fontSize: widget.isHome ? 10 : 14,
-                //                         color: Colors.grey[600],
-                //                       ),
-                //                     ),
-                //                     SizedBox(height: 8),
-                //                     // 시작 시간 - 종료 시간
-                //                     Row(
-                //                       children: [
-                //                         Icon(Icons.access_time,
-                //                             size: 14, color: Colors.grey),
-                //                         SizedBox(width: 4),
-                //                         Text(
-                //                           '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
-                //                           style: TextStyle(
-                //                             fontSize: 14,
-                //                             color: Colors.grey[600],
-                //                           ),
-                //                         ),
-                //                       ],
-                //                     ),
-                //                   ],
-                //                 ),
-                //               ),
-                //             ),
-                //           ],
-                //         ),
-                //       ),
-                //     ),
-                //   );
-                // }),
-                // ..._buildEventTilesForDate(date),
+                ..._buildEventTilesForDate(date),
               ],
             );
           },
@@ -373,216 +201,189 @@ class _BuildScheduleState extends State<BuildSchedule> {
           ),
         ],
       ],
-
-    );
-
-  }
-
-  Widget buildEventTile(Map<String, dynamic> event) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ListTile(
-        title: Text(
-          event['title'],
-          style: TextStyle(fontSize: widget.isHome ? 12 : 16),
-        ),
-        subtitle: Text(event['description'] ?? ''),
-      ),
     );
   }
 
-
-  Widget buildDateSection(DateTime date) {
-
+  List<Widget> _buildEventTilesForDate(DateTime date) {
     final eventIds = widget.scheduleState.getEventsForDay(date);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    if (eventIds.isEmpty) {
+      // 해당 날짜에 일정이 없을 경우
+      return [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
           child: Text(
-            '${date.year}년 ${date.month}월 ${date.day}일 (${_getWeekday(date)})',
+            "일정이 없습니다",
             style: TextStyle(
-              fontSize: widget.isHome ? 14 : 18,
-              fontWeight: widget.isHome ? FontWeight.normal : FontWeight.bold,
+              fontSize: widget.isHome ? 12 : 16,
+              color: Colors.grey,
             ),
           ),
         ),
-        ...eventIds.map((eventId) {
-          final event = widget.scheduleState.events[eventId];
-          return buildEventTile(event!);
-        }).toList(),
-      ],
-    );
+      ];
+    }
+
+    return eventIds.map((eventId) {
+      final event = widget.scheduleState.events[eventId];
+      final eventStartDate = event?['startDate'];
+      final eventEndDate = event?['endDate'];
+      final adjustedStart =
+          date.isAtSameMomentAs(widget.scheduleState.stripTime(eventStartDate))
+              ? eventStartDate
+              : DateTime(date.year, date.month, date.day, 0, 0);
+      final adjustedEnd =
+          date.isAtSameMomentAs(widget.scheduleState.stripTime(eventEndDate))
+              ? eventEndDate
+              : DateTime(date.year, date.month, date.day, 23, 59);
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 태그 색상 표시
+                Container(
+                  width: 8,
+                  decoration: BoxDecoration(
+                    color: event?['tag']['color'],
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 일정 제목
+                        Row(
+                          children: [
+                            Text(
+                              event?['title'],
+                              style: TextStyle(
+                                fontSize: widget.isHome ? 12 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Spacer(),
+                            if (!widget.isHome) ...[
+                              IconButton(
+                                icon: Icon(
+                                  Icons.edit,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  widget.scheduleState
+                                      .editMode(eventId: eventId);
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
+                                hoverColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.close_outlined,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  if (widget.scheduleState.events
+                                      .containsKey(eventId)) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          title: Text(
+                                            '일정을 삭제하시겠습니까?',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(fontSize: 18),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: Text('취소'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  widget.scheduleState
+                                                      .deleteEvent(
+                                                          eventId: eventId);
+                                                });
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: Text('확인'),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  }
+                                },
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
+                                hoverColor: Colors.transparent,
+                                highlightColor: Colors.transparent,
+                                splashColor: Colors.transparent,
+                              ),
+                            ],
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        // 일정 설명
+                        Text(
+                          event?['description'] ?? '',
+                          style: TextStyle(
+                            fontSize: widget.isHome ? 10 : 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        // 시작 시간 - 종료 시간
+                        Row(
+                          children: [
+                            Icon(Icons.access_time,
+                                size: 14, color: Colors.grey),
+                            SizedBox(width: 4),
+                            Text(
+                              '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
-
-
-// 해당 날짜의 이벤트 목록 생성
-//   List<Widget> _buildEventTilesForDate(DateTime date) {
-//     final eventIds = widget.scheduleState.getEventsForDay(date);
-//     return eventIds.map((eventId) {
-//       final event = widget.scheduleState.events[eventId];
-//       final eventStartDate = event?['startDate'];
-//       final eventEndDate = event?['endDate'];
-//       final adjustedStart = date.isAtSameMomentAs(
-//           widget.scheduleState.stripTime(eventStartDate))
-//           ? eventStartDate
-//           : DateTime(date.year, date.month, date.day, 0, 0);
-//       final adjustedEnd = date.isAtSameMomentAs(
-//           widget.scheduleState.stripTime(eventEndDate))
-//           ? eventEndDate
-//           : DateTime(date.year, date.month, date.day, 23, 59);
-//
-//       return Padding(
-//         padding: const EdgeInsets.symmetric(vertical: 8.0),
-//         child: Container(
-//           decoration: BoxDecoration(
-//             color: Colors.white,
-//             borderRadius: BorderRadius.circular(12),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.grey.withOpacity(0.2),
-//                 blurRadius: 6,
-//                 offset: Offset(0, 3),
-//               ),
-//             ],
-//           ),
-//           child: IntrinsicHeight(
-//             child: Row(
-//               crossAxisAlignment: CrossAxisAlignment.stretch,
-//               children: [
-//                 // 태그 색상 표시
-//                 Container(
-//                   width: 8,
-//                   decoration: BoxDecoration(
-//                     color: event?['tag']['color'],
-//                     borderRadius: BorderRadius.only(
-//                       topLeft: Radius.circular(12),
-//                       bottomLeft: Radius.circular(12),
-//                     ),
-//                   ),
-//                 ),
-//                 Expanded(
-//                   child: Padding(
-//                     padding: const EdgeInsets.all(12.0),
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         // 일정 제목
-//                         Row(
-//                           children: [
-//                             Text(
-//                               event?['title'],
-//                               style: TextStyle(
-//                                 fontSize: widget.isHome ? 12 : 16,
-//                                 fontWeight: FontWeight.bold,
-//                                 color: Colors.black,
-//                               ),
-//                             ),
-//                             Spacer(),
-//                             if (!widget.isHome) ...[
-//                               IconButton(
-//                                 icon: Icon(
-//                                   Icons.edit,
-//                                   color: Colors.grey,
-//                                 ),
-//                                 onPressed: () {
-//                                   widget.scheduleState.editMode(eventId: eventId);
-//                                 },
-//                                 padding: EdgeInsets.zero,
-//                                 constraints: BoxConstraints(),
-//                                 hoverColor: Colors.transparent,
-//                                 highlightColor: Colors.transparent,
-//                                 splashColor: Colors.transparent,
-//                               ),
-//                               IconButton(
-//                                 icon: Icon(
-//                                   Icons.close_outlined,
-//                                   color: Colors.grey,
-//                                 ),
-//                                 onPressed: () {
-//                                   if (widget.scheduleState.events
-//                                       .containsKey(eventId)) {
-//                                     showDialog(
-//                                       context: context,
-//                                       builder: (BuildContext context) {
-//                                         return AlertDialog(
-//                                           title: Text(
-//                                             '일정을 삭제하시겠습니까?',
-//                                             textAlign: TextAlign.center,
-//                                             style: TextStyle(fontSize: 18),
-//                                           ),
-//                                           actions: [
-//                                             TextButton(
-//                                               onPressed: () {
-//                                                 Navigator.of(context).pop();
-//                                               },
-//                                               child: Text('취소'),
-//                                             ),
-//                                             TextButton(
-//                                               onPressed: () {
-//                                                 setState(() {
-//                                                   widget.scheduleState
-//                                                       .deleteEvent(eventId: eventId);
-//                                                 });
-//                                                 Navigator.of(context).pop();
-//                                               },
-//                                               child: Text('확인'),
-//                                             ),
-//                                           ],
-//                                         );
-//                                       },
-//                                     );
-//                                   }
-//                                 },
-//                                 padding: EdgeInsets.zero,
-//                                 constraints: BoxConstraints(),
-//                                 hoverColor: Colors.transparent,
-//                                 highlightColor: Colors.transparent,
-//                                 splashColor: Colors.transparent,
-//                               ),
-//                             ],
-//                           ],
-//                         ),
-//                         SizedBox(height: 4),
-//                         // 일정 설명
-//                         Text(
-//                           event?['description'] ?? '',
-//                           style: TextStyle(
-//                             fontSize: widget.isHome ? 10 : 14,
-//                             color: Colors.grey[600],
-//                           ),
-//                         ),
-//                         SizedBox(height: 8),
-//                         // 시작 시간 - 종료 시간
-//                         Row(
-//                           children: [
-//                             Icon(Icons.access_time,
-//                                 size: 14, color: Colors.grey),
-//                             SizedBox(width: 4),
-//                             Text(
-//                               '${_formatTime(adjustedStart)} - ${_formatTime(adjustedEnd)}',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 color: Colors.grey[600],
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       );
-//     }).toList();
-//   }
-
-
 
   String _getWeekday(DateTime date) {
     const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
