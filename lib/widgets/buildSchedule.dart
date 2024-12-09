@@ -24,6 +24,20 @@ class BuildSchedule extends StatefulWidget {
 
 class _BuildScheduleState extends State<BuildSchedule> {
   @override
+  void initState() {
+    super.initState();
+    if (widget.isHome) {
+
+      widget.scheduleState.loadData().then((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          scrollToTodayOrNext();
+        });
+      });
+    }
+  }
+
+
+  @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     // ScheduleState 구독
@@ -383,6 +397,36 @@ class _BuildScheduleState extends State<BuildSchedule> {
         ),
       );
     }).toList();
+  }
+
+
+  void scrollToTodayOrNext() {
+    if (!widget.isHome) return; // 홈이 아닌 경우 아무 작업도 하지 않음
+
+    final scheduleState = widget.scheduleState;
+
+    final today = scheduleState.stripTime(DateTime.now());
+    final sortedDates = scheduleState.dateIndex.keys.toList()..sort();
+
+    // 오늘 이후 가장 가까운 날짜 찾기
+    DateTime? targetDate;
+    for (final date in sortedDates) {
+      if (!date.isBefore(today)) {
+        targetDate = date;
+        break;
+      }
+    }
+
+    // 스크롤 실행
+    if (targetDate != null) {
+      final targetIndex = sortedDates.indexOf(targetDate);
+      widget.scrollController.scrollTo(
+        index: targetIndex,
+        duration : Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
+        curve: Curves.easeInOutCubic,
+        alignment: 0.01, // 스크롤 위치 조정
+      );
+    }
   }
 
   String _getWeekday(DateTime date) {

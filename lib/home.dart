@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:new_flutter/state/scheduleState.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -60,7 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPages(); // 앱 시작 시 저장된 데이터 불러오기
+    _loadPages();
+    final scheduleState = context.read<ScheduleState>(); // 한 번 호출
+    scheduleState.loadData();
+    // 앱 시작 시 저장된 데이터 불러오기
   }
 
   Future<void> _loadPages() async {
@@ -326,7 +330,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: _buildLabeledBox(
                             label: '일정',
-                            child: BuildSchedule(scheduleState: scheduleState,isHome: true,)
+                            child: BuildSchedule(scheduleState: scheduleState,isHome: true,
+                              scrollController: ItemScrollController(),
+                            )
                           ),
                         ),
                       ],
