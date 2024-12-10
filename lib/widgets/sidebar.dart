@@ -126,6 +126,7 @@ class _SidebarState extends State<Sidebar> {
       duration: Duration(milliseconds: 300),
       width: isSidebarOpen ? 200 : 70,
       color: Color(0xFFF5F5F3),
+
       child: Column(
         children: [
           SizedBox(height: 10),
@@ -142,6 +143,7 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.home_outlined,
             label: '홈',
+
             onTap: () {
               // 홈 버튼 클릭 시 HomeScreen으로 이동
               Navigator.push(
@@ -198,6 +200,7 @@ class _SidebarState extends State<Sidebar> {
           _buildSidebarItem(
             icon: Icons.language,
             label: '대외 웹사이트',
+
             onTap: () {
               Navigator.push(
                 context,
@@ -228,11 +231,15 @@ class _SidebarState extends State<Sidebar> {
   Widget _buildSidebarItem({
     required IconData icon,
     required String label,
+    bool showLabel = true,
+
     VoidCallback? onTap,
   }) {
     return ListTile(
+      visualDensity: VisualDensity(vertical: -3), // 밀도를 조정해 높이를 줄임
       leading: Icon(icon, color: Color(0xFF91918E)),
-      title: isSidebarOpen ? Text(label) : null,
+      title: showLabel ? Text(label) : null, // 텍스트 표시 여부 결정
+
       onTap: onTap,
     );
   }
