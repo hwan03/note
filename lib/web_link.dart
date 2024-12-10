@@ -17,17 +17,17 @@ class WebLinkPage extends StatelessWidget {
   // 외부 링크 데이터
   final List<Map<String, String>> webLinks = [
     {'title': 'LH홈페이지', 'url': 'https://www.lh.or.kr/main/', 'img':'assets/images/lh.png'},
-    {'title': 'Youtube', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw','img':'assets/images/youtube.jpg'},
-    {'title': 'Instagram', 'url': 'https://www.instagram.com/with_lh_official','img':'assets/images/instagram.jpg'},
+    {'title': 'Youtube', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw','img':'assets/images/youtube.png'},
+    {'title': 'Instagram', 'url': 'https://www.instagram.com/with_lh_official','img':'assets/images/instagram.png'},
     {'title': 'LH블로그', 'url': 'https://blog.naver.com/bloglh','img':'assets/images/naver.png'},
     {'title': 'Facebook', 'url': 'https://www.facebook.com/withLHofficial','img':'assets/images/Facebook.png'},
     {'title': '카카오스토리', 'url': 'https://story.kakao.com/ch/storylh/','img':'assets/images/Kakao.png'},
   ];
 
   // URL 열기 함수
-  Future<void> _launchURL(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
+  Future<void> _launchURL(Uri url) async {
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
     } else {
       throw 'Could not launch $url';
     }
@@ -69,7 +69,7 @@ class WebLinkPage extends StatelessWidget {
                         itemBuilder: (context, index) {
                           final link = webLinks[index];
                           return GestureDetector(
-                            onTap: () => _launchURL(link['url']!),
+                            onTap: () => _launchURL(Uri.parse(link['url']!)),
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
