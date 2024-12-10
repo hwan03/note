@@ -5,12 +5,12 @@ import 'widgets/sidebar.dart'; // Sidebar import
 import 'widgets/summary_chart.dart'; // SummarySection import
 
 class ToDoPage extends StatefulWidget {
-  final List<String> recentPages;
-  final Function(String) navigateToPage;
-  final VoidCallback addNewPage;
+  final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
+  final Function(String) navigateToPage; // 페이지 이동 함수
+  final VoidCallback addNewPage; // 새 페이지 추가 함수
 
   const ToDoPage({
-    required this.recentPages,
+    required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
     Key? key,
@@ -20,6 +20,29 @@ class ToDoPage extends StatefulWidget {
 }
 
 class _ToDoPageState extends State<ToDoPage> {
+  final ToDoData todoData = ToDoData();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSections(); // 저장된 상태 로드
+  }
+
+  @override
+  void dispose() {
+    _saveSections(); // 앱 종료 시 저장
+    super.dispose();
+  }
+
+  Future<void> _loadSections() async {
+    await todoData.loadSections();
+    setState(() {});
+  }
+
+  Future<void> _saveSections() async {
+    await todoData.saveSections();
+  }
+
   @override
   Widget build(BuildContext context) {
     final toDoData = context.watch<ToDoData>(); // Provider로 상태 가져오기
@@ -29,7 +52,7 @@ class _ToDoPageState extends State<ToDoPage> {
       body: Row(
         children: [
           Sidebar(
-            recentPages: widget.recentPages,
+            pages: widget.pages,
             navigateToPage: widget.navigateToPage,
             addNewPage: widget.addNewPage,
           ), // Sidebar widget 사용
