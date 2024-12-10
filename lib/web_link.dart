@@ -90,8 +90,8 @@ class WebLinkPage extends StatelessWidget {
                                 children: [
                                   Image.asset(
                                     link['img']!, // 로컬 이미지 경로
-                                    width: 300,
-                                    height: 300,
+                                    width: 200,
+                                    height: 200,
                                   ),
                                   SizedBox(height: 8), // 이미지와 텍스트 간 간격
                                   Text(
