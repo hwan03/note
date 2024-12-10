@@ -27,7 +27,6 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -47,16 +46,16 @@ class _CalendarPageState extends State<CalendarPage> {
 }
 
 class CalendarScreen extends StatefulWidget {
-  final Map<String, Map<String, dynamic>> pages;// 추가
+  final Map<String, Map<String, dynamic>> pages; // 추가
   final Function(String) navigateToPage;
   final VoidCallback addNewPage;
 
-const CalendarScreen({
-  required this.pages,
-  required this.navigateToPage,
-  required this.addNewPage,
-  Key? key,
-}) : super(key: key);
+  const CalendarScreen({
+    required this.pages,
+    required this.navigateToPage,
+    required this.addNewPage,
+    Key? key,
+  }) : super(key: key);
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
@@ -84,11 +83,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     scheduleState.notifyListeners(); // 상태 변경 알림
   }
 
-
-
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
-  final  scrollController = ItemScrollController();
+  final scrollController = ItemScrollController();
 
   Future<void> _showCustomDateTimePicker(
       BuildContext context, bool isStart) async {
@@ -165,12 +162,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     final scheduleState = Provider.of<ScheduleState>(context, listen: true);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false, // 키보드가 올라와도 기본 크기 유지
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -311,17 +308,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
                   SizedBox(width: 16), // 달력과 일정 영역 간 간격
-                  // 일정 작성 영역
+                  // ₩ 작성 영역
                   Expanded(
                     flex: 5,
                     child: _buildLabeledBox(
                       label: '일정',
                       child: scheduleState.isCreatingEvent
-                        ? _buildEventEditor()
+                          ? _buildEventEditor()
                           : BuildSchedule(
-                        scheduleState: scheduleState,
-                        scrollController: scrollController,
-                        selectedDate: _selectedDate,
+                              scheduleState: scheduleState,
+                              scrollController: scrollController,
+                              selectedDate: _selectedDate,
                             ),
                     ),
                   ),
@@ -351,13 +348,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (scrollController.isAttached) {
       scrollController.scrollTo(
         index: targetIndex,
-        duration : Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
+        duration:
+            Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
         curve: Curves.easeInOutCubic,
         alignment: 0.01,
       );
     }
   }
-
 
   /// 예정된 일정 화면
 
@@ -367,244 +364,288 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Stack(children: [
       Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 일정 제목
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onDoubleTap: scheduleState.isEditing
-                      ? null
-                      : () => changeTagColorDiaglog(scheduleState.tags
-                          .indexOf(scheduleState.selectedTag!)),
-                  child: CircleAvatar(
-                    backgroundColor: scheduleState.selectedTag!['color'],
-                    radius: 8,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: scheduleState.titleController,
-                    maxLength: 20,
-                    maxLines: 1,
-                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                    decoration: InputDecoration(
-                      labelText: '제목',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 24),
-            // 시작 날짜와 종료 날짜
-            Container(
-              height: 100,
-              decoration: BoxDecoration(
-                color: Color(0xFF91918E),
-                borderRadius: BorderRadius.circular(16),
+        child: LayoutBuilder(builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildDateTimePickerField(
-                      context,
-                      selectedDateTime: scheduleState.selectedStartDateTime,
-                      color: Colors.blue,
-                      isStart: true,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: _buildDateTimePickerField(
-                      context,
-                      color: Color(0xFF91918E),
-                      selectedDateTime: scheduleState.selectedEndDateTime,
-                      isStart: false,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            // 태그 리스트
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "일정 태그",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                // if(!scheduleState.isEditing)
-                IconButton(
-                  icon: Icon(Icons.add_outlined, color: Colors.black),
-                  onPressed: scheduleState.tags.length < 5
-                      ? scheduleState.addTag
-                      : null,
-                ),
-              ],
-            ),
-            Column(
-              children: List.generate(scheduleState.tags.length, (index) {
-                return Row(
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Radio<Map<String, dynamic>>(
-                      value: scheduleState.tags[index], // 현재 태그 데이터
-                      groupValue: scheduleState.selectedTag, // 선택된 태그
-                      onChanged: (Map<String, dynamic>? value) {
-                        setState(() {
-                          scheduleState.selectedTag = value; // 선택된 태그 저장
-                        });
-                      },
+                    // 일정 제목
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onDoubleTap: scheduleState.isEditing
+                              ? null
+                              : () => changeTagColorDiaglog(scheduleState.tags
+                                  .indexOf(scheduleState.selectedTag!)),
+                          child: CircleAvatar(
+                            backgroundColor:
+                                scheduleState.selectedTag!['color'],
+                            radius: 8,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: scheduleState.titleController,
+                            maxLength: 20,
+                            maxLines: 1,
+                            maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                            decoration: InputDecoration(
+                              labelText: '제목',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    GestureDetector(
-                      onDoubleTap: scheduleState.isEditing
-                          ? null
-                          : () => changeTagColorDiaglog(index),
-                      child: CircleAvatar(
-                          backgroundColor: scheduleState.tags[index]['color'],
-                          radius: 8),
+                    SizedBox(height: 12),
+                    // 시작 날짜와 종료 날짜
+                    Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Color(0xFF91918E),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildDateTimePickerField(
+                              context,
+                              selectedDateTime:
+                                  scheduleState.selectedStartDateTime,
+                              color: Colors.blue,
+                              isStart: true,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: _buildDateTimePickerField(
+                              context,
+                              color: Color(0xFF91918E),
+                              selectedDateTime:
+                                  scheduleState.selectedEndDateTime,
+                              isStart: false,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    SizedBox(width: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "일정 태그",
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        // if(!scheduleState.isEditing)
+                        GestureDetector(
+                          onTap: scheduleState.tags.length < 4
+                              ? scheduleState.addTag
+                              : null,
+                          child: Container(
+                            width: 48, // 원하는 너비
+                            height: 48, // 원하는 높이
+                            alignment: Alignment.center, // 아이콘 정렬
+                            child: Icon(
+                              Icons.add_outlined,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      children:
+                          List.generate(scheduleState.tags.length, (index) {
+                        return Row(
+                          children: [
+                            SizedBox(
+                              height: 34,
+                              child: Radio<Map<String, dynamic>>(
+                                value: scheduleState.tags[index],
+                                // 현재 태그 데이터
+                                groupValue: scheduleState.selectedTag,
+                                // 선택된 태그
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                onChanged: (Map<String, dynamic>? value) {
+                                  setState(() {
+                                    scheduleState.selectedTag =
+                                        value; // 선택된 태그 저장
+                                  });
+                                },
+                              ),
+                            ),
+                            GestureDetector(
+                              onDoubleTap: scheduleState.isEditing
+                                  ? null
+                                  : () => changeTagColorDiaglog(index),
+                              child: CircleAvatar(
+                                  backgroundColor: scheduleState.tags[index]
+                                      ['color'],
+                                  radius: 8),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onDoubleTap: scheduleState.isEditing
+                                    ? null
+                                    : () => editTagNameDialog(index),
+                                child: Text(
+                                  scheduleState.tags[index]['name'],
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ),
+                            if (!scheduleState.isEditing)
+                              GestureDetector(
+                                  onTap: scheduleState.tags.length > 1
+                                      ? () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: Text(
+                                                  '해당 태그를 삭제하시겠습니까?\n일정이 삭제됩니다!',
+                                                  textAlign: TextAlign
+                                                      .center, // 텍스트 가운데 정렬
+                                                  style:
+                                                      TextStyle(fontSize: 18),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      Navigator.of(context)
+                                                          .pop(); // 팝업 닫기
+                                                    },
+                                                    child: Text('취소'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        scheduleState.deleteTag(
+                                                            index); // 태그 삭제 함수 호출
+                                                      });
+                                                      Navigator.of(context)
+                                                          .pop(); // 팝업 닫기
+                                                    },
+                                                    child: Text('확인'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        }
+                                      : null,
+                                  child: Container(
+                                    width: 48, // 원하는 너비
+                                    height: 48, // 원하는 높이
+
+                                    alignment: Alignment.center, // 아이콘 정렬
+
+                                    child:
+                                        Icon(Icons.close, color: Colors.grey),
+                                  )),
+                          ],
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 12),
+                    // 상세 일정 작성
                     Expanded(
-                      child: GestureDetector(
-                        onDoubleTap: scheduleState.isEditing
-                            ? null
-                            : () => editTagNameDialog(index),
-                        child: Text(
-                          scheduleState.tags[index]['name'],
-                          style: TextStyle(fontSize: 16),
+                      child: TextField(
+                        controller: scheduleState.descriptionController,
+                        maxLines: null,
+                        expands: true,
+                        maxLength: 70,
+                        maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                        decoration: InputDecoration(
+                          labelText: '상세 내용',
+                          border: OutlineInputBorder(),
                         ),
                       ),
                     ),
-                    if (!scheduleState.isEditing)
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.grey),
-                        onPressed: scheduleState.tags.length > 1
-                            ? () {
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: Text(
-                                        '해당 태그를 삭제하시겠습니까?\n일정이 삭제됩니다!',
-                                        textAlign:
-                                            TextAlign.center, // 텍스트 가운데 정렬
-                                        style: TextStyle(fontSize: 18),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context)
-                                                .pop(); // 팝업 닫기
-                                          },
-                                          child: Text('취소'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              scheduleState.deleteTag(
-                                                  index); // 태그 삭제 함수 호출
-                                            });
-                                            Navigator.of(context)
-                                                .pop(); // 팝업 닫기
-                                          },
-                                          child: Text('확인'),
-                                        ),
-                                      ],
-                                    );
-                                  },
+                    SizedBox(height: 8),
+                    // 작성 완료 버튼
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            if (scheduleState.selectedStartDateTime != null &&
+                                scheduleState.selectedEndDateTime != null &&
+                                scheduleState.selectedTag != null &&
+                                scheduleState.titleController.text.isNotEmpty) {
+                              if (scheduleState.isEditing) {
+                                // 수정 모드일 경우
+                                scheduleState.editEvent(
+                                  eventId: scheduleState.editingEventId,
+                                  startDate:
+                                      scheduleState.selectedStartDateTime,
+                                  endDate: scheduleState.selectedEndDateTime,
+                                  title: scheduleState.titleController.text,
+                                  description:
+                                      scheduleState.descriptionController.text,
+                                  tag: scheduleState.selectedTag!,
+                                );
+                              } else {
+                                // 작성 모드일 경우
+                                scheduleState.addEvent(
+                                  startDate:
+                                      scheduleState.selectedStartDateTime,
+                                  endDate: scheduleState.selectedEndDateTime,
+                                  title: scheduleState.titleController.text,
+                                  description:
+                                      scheduleState.descriptionController.text,
+                                  tag: scheduleState.selectedTag!,
                                 );
                               }
-                            : null,
-                      ),
+                              // 필드 초기화 및 화면 전환
+                              scheduleState.titleController.clear();
+                              scheduleState.descriptionController.clear();
+                              scheduleState.toggleScreen(); // 이전 화면으로 전환
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('모든 필드를 입력해주세요!')),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.grey[200],
+                            // 텍스트 색상 (검정)
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            // 버튼 크기 조정
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(8), // 적당히 둥근 모서리
+                            ),
+                            elevation: 1, // 낮은 그림자 효과
+                          ),
+                          child: Text(
+                            '작성 완료',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500, // 중간 굵기
+                              color: Colors.black, // 텍스트 색상
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
                   ],
-                );
-              }),
-            ),
-            SizedBox(height: 24),
-            // 상세 일정 작성
-            Expanded(
-              child: TextField(
-                controller: scheduleState.descriptionController,
-                maxLines: null,
-                expands: true,
-                maxLength: 70,
-                maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                decoration: InputDecoration(
-                  labelText: '상세 내용',
-                  border: OutlineInputBorder(),
                 ),
               ),
             ),
-            SizedBox(height: 16),
-            // 작성 완료 버튼
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    if (scheduleState.selectedStartDateTime != null &&
-                        scheduleState.selectedEndDateTime != null &&
-                        scheduleState.selectedTag != null &&
-                        scheduleState.titleController.text.isNotEmpty) {
-                      if (scheduleState.isEditing) {
-                        // 수정 모드일 경우
-                        scheduleState.editEvent(
-                          eventId: scheduleState.editingEventId,
-                          startDate: scheduleState.selectedStartDateTime,
-                          endDate: scheduleState.selectedEndDateTime,
-                          title: scheduleState.titleController.text,
-                          description: scheduleState.descriptionController.text,
-                          tag: scheduleState.selectedTag!,
-                        );
-                      } else {
-                        // 작성 모드일 경우
-                        scheduleState.addEvent(
-                          startDate: scheduleState.selectedStartDateTime,
-                          endDate: scheduleState.selectedEndDateTime,
-                          title: scheduleState.titleController.text,
-                          description: scheduleState.descriptionController.text,
-                          tag: scheduleState.selectedTag!,
-                        );
-                      }
-                      // 필드 초기화 및 화면 전환
-                      scheduleState.titleController.clear();
-                      scheduleState.descriptionController.clear();
-                      scheduleState.toggleScreen(); // 이전 화면으로 전환
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('모든 필드를 입력해주세요!')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    backgroundColor: Colors.grey[200],
-                    // 텍스트 색상 (검정)
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    // 버튼 크기 조정
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8), // 적당히 둥근 모서리
-                    ),
-                    elevation: 1, // 낮은 그림자 효과
-                  ),
-                  child: Text(
-                    '작성 완료',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500, // 중간 굵기
-                      color: Colors.black, // 텍스트 색상
-                    ),
-                  ),
-                ),
-              ],
-            )
-          ],
-        ),
+          );
+        }),
       ),
       Positioned(
         top: -10,
@@ -680,7 +721,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 텍스트 필드 편집 컨트롤러
   final TextEditingController _editingController = TextEditingController();
-
 
   Widget _buildDateTimePickerField(
     BuildContext context, {

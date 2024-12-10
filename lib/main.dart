@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:new_flutter/state/scheduleState.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -14,6 +15,8 @@ import 'package:flutter/services.dart'; // Orientation 설정에 필요
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Flutter 바인딩 초기화
+  debugPaintSizeEnabled = true; // 크기 경계 확인 활성화
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
@@ -37,6 +40,7 @@ class MyApp extends StatelessWidget {
       title: 'UI Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+
       ),
       locale: Locale('ko', 'KR'), // 한국어 설정
       localizationsDelegates: [
