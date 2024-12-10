@@ -15,7 +15,6 @@ import 'package:flutter/services.dart'; // Orientation 설정에 필요
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Flutter 바인딩 초기화
-  debugPaintSizeEnabled = true; // 크기 경계 확인 활성화
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
