@@ -27,6 +27,7 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
+
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -46,16 +47,16 @@ class _CalendarPageState extends State<CalendarPage> {
 }
 
 class CalendarScreen extends StatefulWidget {
-  final Map<String, Map<String, dynamic>> pages; // 추가
+  final Map<String, Map<String, dynamic>> pages;// 추가
   final Function(String) navigateToPage;
   final VoidCallback addNewPage;
 
-  const CalendarScreen({
-    required this.pages,
-    required this.navigateToPage,
-    required this.addNewPage,
-    Key? key,
-  }) : super(key: key);
+const CalendarScreen({
+  required this.pages,
+  required this.navigateToPage,
+  required this.addNewPage,
+  Key? key,
+}) : super(key: key);
 
   @override
   _CalendarScreenState createState() => _CalendarScreenState();
@@ -83,9 +84,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     scheduleState.notifyListeners(); // 상태 변경 알림
   }
 
+
+
   DateTime _focusedDate = DateTime.now();
   DateTime _selectedDate = DateTime.now();
-  final scrollController = ItemScrollController();
+  final  scrollController = ItemScrollController();
 
   Future<void> _showCustomDateTimePicker(
       BuildContext context, bool isStart) async {
@@ -162,179 +165,172 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     final scheduleState = Provider.of<ScheduleState>(context, listen: true);
 
     return Scaffold(
-        resizeToAvoidBottomInset: true, // 키보드로 인해 화면 크기 변경 허용
-        body: SingleChildScrollView(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Sidebar(
-                pages: widget.pages,
-                navigateToPage: widget.navigateToPage,
-                addNewPage: widget.addNewPage,
-              ),
-              // Main Content
-              // 달력 영역
-              Expanded(
-                flex: 10, // 메인 컨텐츠 부분의 총 비율 설정
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0), // 달력과 일정 영역에만 간격 추가
-                  child: Row(
-                    children: [
-                      // 달력 영역
-                      Expanded(
-                        flex: 5,
-                        child: _buildLabeledBox(
-                          label: '달력',
-                          child: Column(
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Sidebar(
+            pages: widget.pages,
+            navigateToPage: widget.navigateToPage,
+            addNewPage: widget.addNewPage,
+          ),
+          // Main Content
+          // 달력 영역
+          Expanded(
+            flex: 10, // 메인 컨텐츠 부분의 총 비율 설정
+            child: Padding(
+              padding: const EdgeInsets.all(16.0), // 달력과 일정 영역에만 간격 추가
+              child: Row(
+                children: [
+                  // 달력 영역
+                  Expanded(
+                    flex: 5,
+                    child: _buildLabeledBox(
+                      label: '달력',
+                      child: Column(
+                        children: [
+                          // 새로운 연월 조정 UI
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // 새로운 연월 조정 UI
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.chevron_left),
-                                        onPressed: () => _changeMonth(-1),
-                                      ),
-                                      Text(
-                                        '${_focusedDate.month}월',
-                                        style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.chevron_right),
-                                        onPressed: () => _changeMonth(1),
-                                      ),
-                                    ],
+                                  IconButton(
+                                    icon: Icon(Icons.chevron_left),
+                                    onPressed: () => _changeMonth(-1),
                                   ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.chevron_left),
-                                        onPressed: () => _changeYear(-1),
-                                      ),
-                                      Text(
-                                        '${_focusedDate.year}년',
-                                        style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.chevron_right),
-                                        onPressed: () => _changeYear(1),
-                                      ),
-                                    ],
+                                  Text(
+                                    '${_focusedDate.month}월',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.chevron_right),
+                                    onPressed: () => _changeMonth(1),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 8), // 버튼과 달력 간 간격
-                              Expanded(
-                                child: TableCalendar(
-                                  firstDay: DateTime.utc(2020, 1, 1),
-                                  lastDay: DateTime.utc(2030, 12, 31),
-                                  focusedDay: _focusedDate,
-                                  selectedDayPredicate: (day) =>
-                                      isSameDay(_selectedDate, day),
-                                  onDaySelected: (selectedDay, focusedDay) {
-                                    setState(() {
-                                      _selectedDate = selectedDay;
-                                      _focusedDate = focusedDay;
-                                      scrollToDate(selectedDay);
-                                      // 해당 날짜로 스크롤
-                                    });
-                                  },
-                                  onPageChanged: (focusedDay) {
-                                    // 페이지가 변경되었을 때 호출
-                                    setState(() {
-                                      _focusedDate = focusedDay; // 연/월 업데이트
-                                    });
-                                  },
-                                  eventLoader: (day) {
-                                    // 이벤트 ID 리스트를 가져옴
-                                    final eventIds =
-                                        scheduleState.getEventsForDay(day);
-
-                                    // ID 리스트를 통해 실제 이벤트 객체 리스트로 변환
-                                    return eventIds
-                                        .map((id) => scheduleState.events[id]!)
-                                        .toList();
-                                  },
-                                  // 이벤트 로드 설정
-                                  calendarBuilders: CalendarBuilders(
-                                    markerBuilder: (context, date, events) {
-                                      // print('Date: $date, Events: $events');
-                                      final limitedEvents =
-                                          (events as List<Map<String, dynamic>>)
-                                              .take(4)
-                                              .toList();
-                                      if (events.isNotEmpty) {
-                                        return Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children:
-                                              (limitedEvents).map((event) {
-                                            if (event['tag'] != null) {
-                                              // t
-                                              return Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 2),
-                                                child: _buildColorCircle(
-                                                    color: event['tag']
-                                                        ['color'],
-                                                    size: 8),
-                                              );
-                                            }
-                                            return SizedBox(); // tag가 null인 경우 빈 공간으로 처리
-                                          }).toList(),
-                                        );
-                                      }
-                                      return null; // 이벤트가 없는 경우 null 반환
-                                    },
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.chevron_left),
+                                    onPressed: () => _changeYear(-1),
                                   ),
-                                  headerVisible: false,
-                                  rowHeight: 100,
-                                  calendarStyle: CalendarStyle(
-                                    todayDecoration: BoxDecoration(),
-                                    todayTextStyle:
-                                        TextStyle(color: Colors.black),
+                                  Text(
+                                    '${_focusedDate.year}년',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
                                   ),
-                                ),
-                              )
+                                  IconButton(
+                                    icon: Icon(Icons.chevron_right),
+                                    onPressed: () => _changeYear(1),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                        ),
+                          SizedBox(height: 8), // 버튼과 달력 간 간격
+                          Expanded(
+                            child: TableCalendar(
+                              firstDay: DateTime.utc(2020, 1, 1),
+                              lastDay: DateTime.utc(2030, 12, 31),
+                              focusedDay: _focusedDate,
+                              selectedDayPredicate: (day) =>
+                                  isSameDay(_selectedDate, day),
+                              onDaySelected: (selectedDay, focusedDay) {
+                                setState(() {
+                                  _selectedDate = selectedDay;
+                                  _focusedDate = focusedDay;
+                                  scrollToDate(selectedDay);
+                                  // 해당 날짜로 스크롤
+                                });
+                              },
+                              onPageChanged: (focusedDay) {
+                                // 페이지가 변경되었을 때 호출
+                                setState(() {
+                                  _focusedDate = focusedDay; // 연/월 업데이트
+                                });
+                              },
+                              eventLoader: (day) {
+                                // 이벤트 ID 리스트를 가져옴
+                                final eventIds =
+                                    scheduleState.getEventsForDay(day);
+
+                                // ID 리스트를 통해 실제 이벤트 객체 리스트로 변환
+                                return eventIds
+                                    .map((id) => scheduleState.events[id]!)
+                                    .toList();
+                              },
+                              // 이벤트 로드 설정
+                              calendarBuilders: CalendarBuilders(
+                                markerBuilder: (context, date, events) {
+                                  // print('Date: $date, Events: $events');
+                                  final limitedEvents =
+                                      (events as List<Map<String, dynamic>>)
+                                          .take(4)
+                                          .toList();
+                                  if (events.isNotEmpty) {
+                                    return Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: (limitedEvents).map((event) {
+                                        if (event['tag'] != null) {
+                                          // t
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 2),
+                                            child: _buildColorCircle(
+                                                color: event['tag']['color'],
+                                                size: 8),
+                                          );
+                                        }
+                                        return SizedBox(); // tag가 null인 경우 빈 공간으로 처리
+                                      }).toList(),
+                                    );
+                                  }
+                                  return null; // 이벤트가 없는 경우 null 반환
+                                },
+                              ),
+                              headerVisible: false,
+                              rowHeight: 100,
+                              calendarStyle: CalendarStyle(
+                                todayDecoration: BoxDecoration(),
+                                todayTextStyle: TextStyle(color: Colors.black),
+                              ),
+                            ),
+                          )
+                        ],
                       ),
-                      SizedBox(width: 16), // 달력과 일정 영역 간 간격
-                      // 일정 작성 영역
-                      Expanded(
-                        flex: 5,
-                        child: _buildLabeledBox(
-                          label: '일정',
-                          child: scheduleState.isCreatingEvent
-                              ? _buildEventEditor()
-                              : BuildSchedule(
-                                  scheduleState: scheduleState,
-                                  scrollController: scrollController,
-                                  selectedDate: _selectedDate,
-                                ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  SizedBox(width: 16), // 달력과 일정 영역 간 간격
+                  // 일정 작성 영역
+                  Expanded(
+                    flex: 5,
+                    child: _buildLabeledBox(
+                      label: '일정',
+                      child: scheduleState.isCreatingEvent
+                        ? _buildEventEditor()
+                          : BuildSchedule(
+                        scheduleState: scheduleState,
+                        scrollController: scrollController,
+                        selectedDate: _selectedDate,
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        )
+        ],
+      ),
     );
   }
 
@@ -355,13 +351,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (scrollController.isAttached) {
       scrollController.scrollTo(
         index: targetIndex,
-        duration:
-            Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
+        duration : Duration(milliseconds: 300 + (targetIndex * 10).clamp(0, 500)),
         curve: Curves.easeInOutCubic,
         alignment: 0.01,
       );
     }
   }
+
 
   /// 예정된 일정 화면
 
@@ -684,6 +680,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // 텍스트 필드 편집 컨트롤러
   final TextEditingController _editingController = TextEditingController();
+
 
   Widget _buildDateTimePickerField(
     BuildContext context, {

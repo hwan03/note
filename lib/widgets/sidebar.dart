@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../calendar.dart';
-import '../home.dart';
-import '../widgets/dynamic_page.dart';
+import '../main.dart';
 import '../to_do.dart';
 import '../search.dart';
 import '../web_link.dart';
