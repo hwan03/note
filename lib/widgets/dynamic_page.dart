@@ -32,7 +32,7 @@ class DynamicPage extends StatefulWidget {
 }
 
 class _DynamicPageState extends State<DynamicPage> {
-  late Map<String, Map<String, dynamic>> pages;
+  late Map<String, Map<String, dynamic>> pages={};
   late String _currentTitle; // 로컬 상태 변수 추가
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
@@ -97,13 +97,14 @@ class _DynamicPageState extends State<DynamicPage> {
       );
     });
   }
-
+  bool isPagesLoaded = false;
   @override
   void initState() {
     super.initState();
     _currentTitle = widget.title;
     _quillController = quill.QuillController.basic();
     _loadPages();
+
 
 
     // QuillController에 리스너 추가 (내용 변경 시 저장)
@@ -257,28 +258,23 @@ class _DynamicPageState extends State<DynamicPage> {
     // 페이지 목록 불러오기
     final pagesJson = prefs.getString('pages');
     if (pagesJson != null) {
-      setState(() {
-        pages = Map<String, Map<String, dynamic>>.from(
-          jsonDecode(pagesJson).map((key, value) =>
-              MapEntry(key, Map<String, dynamic>.from(value))),
-        );
-      });
+      pages = Map<String, Map<String, dynamic>>.from(
+        jsonDecode(pagesJson).map(
+              (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
+        ),
+      );
     } else {
-      setState(() {
-        pages = {widget.title: {'content': '', 'parent': null}};
-      });
+      pages = {widget.title: {'content': '', 'parent': null}};
     }
 
     // Delta 형식의 문서를 로드하여 Quill 문서로 변환
     final documentJson = prefs.getString(widget.title);
     if (documentJson != null) {
       final documentDelta = quill.Document.fromJson(jsonDecode(documentJson));
-      setState(() {
         _quillController = quill.QuillController(
           document: documentDelta,
           selection: const TextSelection.collapsed(offset: 0),
         );
-      });
     } else {
       setState(() {
         _quillController = quill.QuillController.basic();
@@ -289,6 +285,10 @@ class _DynamicPageState extends State<DynamicPage> {
     setState(() {
       _titleController.text = widget.title;
     });
+
+    setState(() {
+      isPagesLoaded = true; // 로드 완료 표시
+    });
   }
 
 
@@ -296,7 +296,7 @@ class _DynamicPageState extends State<DynamicPage> {
     final prefs = await SharedPreferences.getInstance();
 
     // 현재 상태 저장
-    final newTitle = _titleController.text.trim();
+    final newTitle = _titleController.text;
     final newContent = _quillController.document.toPlainText().trim();
 
     setState(() {
@@ -354,20 +354,23 @@ class _DynamicPageState extends State<DynamicPage> {
         pages[newTitle]?['content'] = newContent;
       }
     });
+    widget.onUpdate?.call(newTitle, newContent); // 콜백 호출
 
     // SharedPreferences에 저장
     final pagesJson = jsonEncode(pages);
     await prefs.setString('pages', pagesJson);
-
+    // 콘솔 출력
+    debugPrint("Updated Pages JSON:\n$pagesJson");
     final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
     await prefs.setString(newTitle, documentJson);
 // 변경된 제목을 기준으로 활성화
     setState(() {
       _currentTitle = newTitle; // 현재 활성화된 페이지를 업데이트
+      debugPrint("Current title updated to: '$_currentTitle'");
+      debugPrint("Updated Pages:\n${jsonEncode(pages)}");
     });
 
-    widget.onUpdate?.call(newTitle, newContent); // 콜백 호출
-  }
+      }
 
 
 
@@ -401,25 +404,69 @@ class _DynamicPageState extends State<DynamicPage> {
         // 제목과 내용을 함께 업데이트
         _updatePage(newTitle, newContent);
 
+        // JSON 변환 후 출력
+        final pagesJson = jsonEncode(pages);
+        debugPrint("Final Pages JSON after Save and Exit:\n$pagesJson");
       }
 
       // 홈 화면으로 이동
       FocusScope.of(context).unfocus(); // 포커스 해제
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _loadPages();
         Navigator.popUntil(context, (route) => route.isFirst);
       });
     }
   }
 
 
-  void _deletePage() {
+  void _deletePage() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    void _deleteWithChildren(String pageName) async {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 자식 페이지들 찾기
+      final children = pages.entries
+          .where((entry) => entry.value['parent'] == pageName)
+          .map((entry) => entry.key)
+          .toList();
+
+      // 자식 페이지들에 대해 재귀적으로 삭제
+      for (final child in children) {
+        _deleteWithChildren(child); // 자식 페이지 삭제 (재귀)
+      }
+
+      // 현재 페이지와 관련된 데이터 삭제
+      setState(() {
+        pages.forEach((key, value) {
+          if (value['parent'] == pageName) {
+            value['parent'] = null; // 부모 관계 초기화
+          }
+        });
+        pages.remove(pageName); // 페이지 삭제
+      });
+
+      // SharedPreferences에서 삭제
+      await prefs.remove(pageName); // 페이지 데이터 제거
+      await prefs.remove('${pageName}_parent'); // 부모 관계 제거
+      await prefs.setString('pages', jsonEncode(pages)); // 변경된 페이지 데이터 저장
+    }
+
+
     setState(() {
-      pages.remove(widget.title);
+      _deleteWithChildren(widget.title); // 현재 페이지와 모든 자식 페이지 삭제
     });
-    _savePages();
+
+    // 삭제 후 남은 페이지 데이터를 `SharedPreferences`에 다시 저장
+    await prefs.setString('pages', jsonEncode(pages));
+
+    // 부모 콜백 호출
     widget.onDelete?.call();
-    Navigator.popUntil(context, (route) => route.isFirst); // 홈 화면으로 이동
+
+    // 홈 화면으로 이동
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
+
 
   int _getPageDepth(String pageName) {
     int depth = 0;
@@ -434,6 +481,21 @@ class _DynamicPageState extends State<DynamicPage> {
     return depth;
   }
 
+  void _clearInvalidParents() {
+    final orphanedPages = <String>[]; // 삭제될 관계 없는 페이지들을 추적
+    setState(() {
+      pages.forEach((key, value) {
+        if (value['parent'] != null && !pages.containsKey(value['parent'])) {
+          orphanedPages.add(key); // 부모가 없는 페이지를 수집
+        }
+      });
+
+      // 부모가 없는 페이지들의 parent를 제거
+      for (final page in orphanedPages) {
+        pages[page]?['parent'] = null;
+      }
+    });
+  }
 
   void _addPage({String? parent}) {
     // 부모 페이지의 깊이 확인
@@ -463,7 +525,8 @@ class _DynamicPageState extends State<DynamicPage> {
     }
 
     newPageName = 'Page $newNumber';
-
+// 페이지 생성 전 기존 `parent` 관계 초기화
+    _clearInvalidParents();
     setState(() {
       pages[newPageName] = {'content': '', 'parent': parent};
     });
@@ -499,10 +562,13 @@ class _DynamicPageState extends State<DynamicPage> {
     );
   }
 
+  void _navigateToPage(String pageName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentTitle = _titleController.text.trim();
+    final currentContent = _quillController.document.toPlainText().trim();
 
-  void _navigateToPage(String pageName) {
-    // 현재 페이지를 저장하고 새로운 페이지로 이동
-    _updatePage(_titleController.text, _contentController.text); // 현재 페이지 저장
+    // 현재 페이지 상태 저장
+    _updatePage(currentTitle, currentContent);
 
     Navigator.push(
       context,
@@ -512,23 +578,32 @@ class _DynamicPageState extends State<DynamicPage> {
           onUpdate: (updatedTitle, updatedContent) {
             setState(() {
               if (updatedTitle != pageName) {
-                pages[updatedTitle] = pages.remove(pageName)!;
+                final pageData = pages.remove(pageName);
+                if (pageData != null) {
+                  pageData['content'] = updatedContent;
+                  pages = {updatedTitle: pageData, ...pages};
+                }
+              } else {
+                pages[pageName]?['content'] = updatedContent;
               }
-              pages[updatedTitle]?['content'] = updatedContent;
             });
-            _savePages(); // 변경 사항 저장
+            _savePages();
           },
           onDelete: () {
             setState(() {
               pages.remove(pageName);
             });
-            _savePages(); // 삭제 후 저장
+            _savePages();
             Navigator.pop(context);
           },
         ),
       ),
-    );
+    ).then((_) {
+      _loadPages(); // 상태 재동기화
+    });
   }
+
+
 // 클래스 내부
   Timer? _debounce; // Debounce용 Timer
 
@@ -830,6 +905,9 @@ class _DynamicPageState extends State<DynamicPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!isPagesLoaded) {
+      return Center(child: CircularProgressIndicator()); // 로딩 화면 표시
+    }
     return GestureDetector(
       onTap: () {
         // 화면의 아무 곳이나 클릭하면 저장
@@ -862,18 +940,22 @@ class _DynamicPageState extends State<DynamicPage> {
                     ),
                     style: TextStyle(color: Colors.black, fontSize: 18),
                     onChanged: (newTitle) {
-                      // 제목 변경 시 실시간 저장 로직
                       if (_debounce?.isActive ?? false) _debounce?.cancel();
                       _debounce = Timer(const Duration(milliseconds: 500), () {
-                        final newContent = _quillController.document.toPlainText();
+                        final currentContent = _quillController.document.toPlainText().trim();
+
                         if (newTitle.isNotEmpty) {
-                          _updatePage(newTitle.trim(), newContent.trim());
+                          // 제목이 변경된 경우 새로운 제목과 현재 내용을 저장
+                          _updatePage(newTitle.trim(), currentContent);
                         }
                       });
                     },
                     onSubmitted: (newTitle) {
-                      final newContent = _quillController.document.toPlainText();
-                      _updatePage(newTitle.trim(), newContent.trim());
+                      final currentContent = _quillController.document.toPlainText().trim();
+                      if (newTitle.isNotEmpty) {
+                        // 제목 제출 시 내용도 함께 저장
+                        _updatePage(newTitle.trim(), currentContent);
+                      }
                     },
                   ),
                 ),
