@@ -136,22 +136,47 @@ class _HomeScreenState extends State<HomeScreen> {
     _savePages();
   }
 
-  void _deletePage(String title) {
-    void _deleteWithChildren(String pageName) {
+  void _deletePage(String title) async{
+    final prefs = await SharedPreferences.getInstance();
+
+    void _deleteWithChildren(String pageName) async {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 자식 페이지들 찾기
       final children = pages.entries
           .where((entry) => entry.value['parent'] == pageName)
           .map((entry) => entry.key)
           .toList();
+
+      // 자식 페이지들에 대해 재귀적으로 삭제
       for (final child in children) {
-        _deleteWithChildren(child);
+        _deleteWithChildren(child); // 자식 페이지 삭제 (재귀)
       }
-      pages.remove(pageName);
+
+      // 현재 페이지와 관련된 데이터 삭제
+      setState(() {
+        pages.forEach((key, value) {
+          if (value['parent'] == pageName) {
+            value['parent'] = null; // 부모 관계 초기화
+          }
+        });
+        pages.remove(pageName); // 페이지 삭제
+      });
+
+      // SharedPreferences에서 삭제
+      await prefs.remove(pageName); // 페이지 데이터 제거
+      await prefs.remove('${pageName}_parent'); // 부모 관계 제거
+      await prefs.setString('pages', jsonEncode(pages)); // 변경된 페이지 데이터 저장
     }
 
+
     setState(() {
-      _deleteWithChildren(title);
+      _deleteWithChildren(title); // 부모와 자식 페이지 모두 삭제
+      pages = Map<String, Map<String, dynamic>>.from(pages); // 상태 갱신
     });
-    _savePages();
+    // SharedPreferences에 갱신된 pages 저장
+    await prefs.setString('pages', jsonEncode(pages));
+
   }
 
   void _navigateToPage(String pageName) {
@@ -175,14 +200,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   final pageData = pages.remove(pageName);
                   if (pageData != null) {
                     pageData['content'] = updatedContent;
-                    pages = {
-                      updatedTitle: pageData,
-                      ...pages,
-                    };
+                    pages = {updatedTitle: pageData, ...pages,};
                   }
                 } else {
                   // 내용만 업데이트
-                  pages[pageName]!['content'] = updatedContent;
+                  pages[pageName]?['content'] = updatedContent;
 
                   // 페이지를 최근으로 이동
                   final pageData = pages.remove(pageName);
@@ -194,15 +216,17 @@ class _HomeScreenState extends State<HomeScreen> {
               _savePages(); // 변경 저장
             },
             onDelete: () {
-              _deletePage(pageName);
-              Navigator.pop(context); // 페이지 삭제 후 뒤로 이동
-            },
+              setState(() {
+      pages.remove(pageName);
+      });
+      _savePages();
+      },
             onAddPage: (newPageName, parent) {
               addNewPage(parent: parent);
             },
           ),
         ),
-      );
+      ).then((_) => _loadPages());;
     });
   }
   String _getCurrentDateWithDay() {
@@ -246,10 +270,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
 
                       //밑에거하면 인라인 페이지도 홈 목록에 다 나옴
-                      itemCount: pages.length.clamp(0, 4),
-                      itemBuilder: (context, index) {
-                        String pageName = pages.keys.toList()[index];
-
+                    itemCount: pages.entries
+                        .where((entry) => entry.value['parent'] == null)
+                        .length
+                        .clamp(0, 4), // 부모 페이지만 표시
+                    itemBuilder: (context, index) {
+                      final filteredPages = pages.entries
+                          .where((entry) => entry.value['parent'] == null) // 부모가 없는 페이지만 필터링
+                          .toList();
+                      String pageName = filteredPages[index].key;
                         return GestureDetector(
                           onTap: () => _navigateToPage(pageName), // 페이지 선택 시 이동
                           child: Container(
