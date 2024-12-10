@@ -20,6 +20,29 @@ class ToDoPage extends StatefulWidget {
 }
 
 class _ToDoPageState extends State<ToDoPage> {
+  final ToDoData todoData = ToDoData();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSections(); // 저장된 상태 로드
+  }
+
+  @override
+  void dispose() {
+    _saveSections(); // 앱 종료 시 저장
+    super.dispose();
+  }
+
+  Future<void> _loadSections() async {
+    await todoData.loadSections();
+    setState(() {});
+  }
+
+  Future<void> _saveSections() async {
+    await todoData.saveSections();
+  }
+
   @override
   Widget build(BuildContext context) {
     final toDoData = context.watch<ToDoData>(); // Provider로 상태 가져오기
