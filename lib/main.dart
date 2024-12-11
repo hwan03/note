@@ -194,13 +194,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToPage(String pageName) {
-    setState(() {
-      // 해당 페이지를 목록의 맨 앞으로 이동
-      final pageData = pages.remove(pageName);
-      if (pageData != null) {
-        pages = {pageName: pageData, ...pages};
-      }
-    });
     _savePages().then((_) {
       Navigator.push(
         context,
