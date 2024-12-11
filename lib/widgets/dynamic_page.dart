@@ -116,7 +116,8 @@ class _DynamicPageState extends State<DynamicPage> {
     _loadPages();
     // QuillController에 리스너 추가 (내용 변경 시 저장)
     _quillController.addListener(() {
-      _savePages();
+      final newContent = _quillController.document.toPlainText().trim();
+      _updatePage(_currentTitle, newContent);
     });
   }
 
