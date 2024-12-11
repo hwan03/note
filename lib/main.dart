@@ -10,24 +10,17 @@ import 'widgets/summary_chart.dart';
 import 'package:new_flutter/widgets/buildSchedule.dart';
 import 'widgets/sidebar.dart';
 import 'widgets/dynamic_page.dart';
-import 'package:flutter/services.dart'; // Orientation 설정에 필요
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized(); // Flutter 바인딩 초기화
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]).then((_) {
-    runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (context) => ToDoData()),
-          ChangeNotifierProvider(create: (context) => ScheduleState()),
-        ],
-        child: MyApp(),
-      ),
-    );
-  });
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ToDoData()),
+        ChangeNotifierProvider(create: (context) => ScheduleState()),
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
