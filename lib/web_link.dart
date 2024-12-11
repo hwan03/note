@@ -7,28 +7,27 @@ class WebLinkPage extends StatelessWidget {
   final Function(String) navigateToPage; // 페이지 이동 함수
   final VoidCallback addNewPage; // 새 페이지 추가 함수
 
-
   WebLinkPage({
     required this.pages,
     required this.navigateToPage,
     required this.addNewPage,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   // 외부 링크 데이터
   final List<Map<String, String>> webLinks = [
-    {'title': 'LH홈페이지', 'url': 'https://www.lh.or.kr/main/', 'img':'assets/images/lh.png'},
-    {'title': 'Youtube', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw','img':'assets/images/youtube.png'},
-    {'title': 'Instagram', 'url': 'https://www.instagram.com/with_lh_official','img':'assets/images/instagram.png'},
-    {'title': 'LH블로그', 'url': 'https://blog.naver.com/bloglh','img':'assets/images/naver.png'},
-    {'title': 'Facebook', 'url': 'https://www.facebook.com/withLHofficial','img':'assets/images/Facebook.png'},
-    {'title': '카카오스토리', 'url': 'https://story.kakao.com/ch/storylh/','img':'assets/images/Kakao.png'},
+    {'title': 'LH홈페이지', 'url': 'https://www.lh.or.kr/main/', 'img': 'assets/images/lh.png'},
+    {'title': 'Youtube', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw', 'img': 'assets/images/youtube.png'},
+    {'title': 'Instagram', 'url': 'https://www.instagram.com/with_lh_official', 'img': 'assets/images/instagram.png'},
+    {'title': 'LH블로그', 'url': 'https://blog.naver.com/bloglh', 'img': 'assets/images/naver.png'},
+    {'title': 'Facebook', 'url': 'https://www.facebook.com/withLHofficial', 'img': 'assets/images/Facebook.png'},
+    {'title': '카카오스토리', 'url': 'https://story.kakao.com/ch/storylh/', 'img': 'assets/images/Kakao.png'},
   ];
 
   // URL 열기 함수
   Future<void> _launchURL(Uri url) async {
     if (await canLaunchUrl(url)) {
-      await launchUrl(url);
+      await launchUrl(url, mode: LaunchMode.inAppWebView);
     } else {
       throw 'Could not launch $url';
     }
@@ -69,22 +68,20 @@ class WebLinkPage extends StatelessWidget {
                         itemCount: webLinks.length,
                         itemBuilder: (context, index) {
                           final link = webLinks[index];
-                          return GestureDetector(
-                            onTap: () => _launchURL(Uri.parse(link['url']!)),
+                          return ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              backgroundColor: Colors.white,
+                              shadowColor: Colors.black12,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                side: BorderSide(color: Color(0xFFF2F1EE)),
+                              ),
+                              elevation: 4,
+                            ),
+                            onPressed: () => _launchURL(Uri.parse(link['url']!)),
                             child: Container(
                               padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Color(0xFFF2F1EE)),
-                                borderRadius: BorderRadius.circular(15),
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -99,6 +96,7 @@ class WebLinkPage extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
+                                      color: Colors.black,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),

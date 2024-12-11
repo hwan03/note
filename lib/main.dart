@@ -268,9 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                _buildLabeledBox(
-                label: '최근 페이지',
-                child: SizedBox(
+                SizedBox(
                   height: 300, // 고정된 높이 설정
 
                   child: GridView.builder(
@@ -343,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-              ),SizedBox(height: 20),
+              SizedBox(height: 20),
                   Expanded(
                     flex: 3,
                     child: Row(
