@@ -538,8 +538,9 @@ class _DynamicPageState extends State<DynamicPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DynamicPage(
+
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => DynamicPage(
           title: newPageName,
           onUpdate: (updatedTitle, updatedContent) {
             setState(() {
@@ -549,14 +550,14 @@ class _DynamicPageState extends State<DynamicPage> {
               pages[updatedTitle]?['content'] = updatedContent;
             });
             _savePages();
-          },
+            },
           onDelete: () {
             setState(() {
               pages.remove(newPageName);
             });
             _savePages();
             Navigator.pop(context);
-          },
+            },
         ),
       ),
     );
@@ -572,8 +573,8 @@ class _DynamicPageState extends State<DynamicPage> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DynamicPage(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => DynamicPage(
           title: pageName,
           onUpdate: (updatedTitle, updatedContent) {
             setState(() {
