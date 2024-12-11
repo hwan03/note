@@ -297,27 +297,22 @@ class _BuildScheduleState extends State<BuildSchedule> {
                             ),
                             Spacer(),
                             if (!widget.isHome) ...[
-                              IconButton(
-                                icon: Icon(
-                                  Icons.edit,
-                                  color: Colors.grey,
-                                ),
-                                onPressed: () {
+                              GestureDetector(
+                              onTap: () {
                                   widget.scheduleState
                                       .editMode(eventId: eventId);
                                 },
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                                hoverColor: Colors.transparent,
-                                highlightColor: Colors.transparent,
-                                splashColor: Colors.transparent,
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.close_outlined,
-                                  color: Colors.grey,
+                                child: Container(
+                                  padding: EdgeInsets.zero, // 여백 없음
+                                  constraints: BoxConstraints(),
+                                  child:Icon(
+                                    Icons.edit,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                                onPressed: () {
+                              ),
+                              GestureDetector(
+                                onTap: () {
                                   if (widget.scheduleState.events
                                       .containsKey(eventId)) {
                                     showDialog(
@@ -341,7 +336,7 @@ class _BuildScheduleState extends State<BuildSchedule> {
                                                 setState(() {
                                                   widget.scheduleState
                                                       .deleteEvent(
-                                                          eventId: eventId);
+                                                      eventId: eventId);
                                                 });
                                                 Navigator.of(context).pop();
                                               },
@@ -353,11 +348,14 @@ class _BuildScheduleState extends State<BuildSchedule> {
                                     );
                                   }
                                 },
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(),
-                                hoverColor: Colors.transparent,
-                                highlightColor: Colors.transparent,
-                                splashColor: Colors.transparent,
+                                child: Container(
+                                  padding: EdgeInsets.zero,
+                                  constraints: BoxConstraints(),
+                                  child: Icon(
+                                    Icons.close_outlined,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ),
                             ],
                           ],

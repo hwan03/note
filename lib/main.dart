@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:new_flutter/state/scheduleState.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -10,17 +11,25 @@ import 'widgets/summary_chart.dart';
 import 'package:new_flutter/widgets/buildSchedule.dart';
 import 'widgets/sidebar.dart';
 import 'widgets/dynamic_page.dart';
+import 'package:flutter/services.dart'; // Orientation 설정에 필요
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (context) => ToDoData()),
-        ChangeNotifierProvider(create: (context) => ScheduleState()),
-      ],
-      child: MyApp(),
-    ),
-  );
+  WidgetsFlutterBinding.ensureInitialized(); // Flutter 바인딩 초기화
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]).then((_) {
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (context) => ToDoData()),
+          ChangeNotifierProvider(create: (context) => ScheduleState()),
+        ],
+        child: MyApp(),
+      ),
+    );
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -30,6 +39,7 @@ class MyApp extends StatelessWidget {
       title: 'UI Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+
       ),
       locale: Locale('ko', 'KR'), // 한국어 설정
       localizationsDelegates: [
@@ -261,10 +271,16 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                SizedBox(
-                  height: 300, // 고정된 높이 설정
 
-                  child: GridView.builder(
+                  Text('최근 페이지',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF91918E))),
+                  SizedBox(height: 10),
+                  SizedBox(
+                    height: 300, // 고정된 높이 설정
+                    child: GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
                         crossAxisSpacing: 10,
@@ -334,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-              SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Expanded(
                     flex: 3,
                     child: Row(

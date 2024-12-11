@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'widgets/sidebar.dart'; // Sidebar import
+
 
 class WebLinkPage extends StatelessWidget {
   final Map<String, Map<String, dynamic>> pages; // 페이지 데이터
@@ -17,21 +19,21 @@ class WebLinkPage extends StatelessWidget {
   // 외부 링크 데이터
   final List<Map<String, String>> webLinks = [
     {'title': 'LH홈페이지', 'url': 'https://www.lh.or.kr/main/', 'img': 'assets/images/lh.png'},
-    {'title': 'Youtube', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw', 'img': 'assets/images/youtube.png'},
-    {'title': 'Instagram', 'url': 'https://www.instagram.com/with_lh_official', 'img': 'assets/images/instagram.png'},
+    {'title': '청약플러스', 'url': 'https://apply.lh.or.kr/lhapply/main.do', 'img': 'assets/images/Plus.png'},
+    {'title': '마이홈', 'url': 'https://www.myhome.go.kr/hws/portal/main/getMgtMainHubPage.do', 'img': 'assets/images/MyHome.png'},
+    {'title': 'LH인스타그램', 'url': 'https://www.instagram.com/with_lh_official', 'img': 'assets/images/instagram.png'},
+    {'title': 'LH유튜브', 'url': 'https://www.youtube.com/channel/UCzCH27zxNFmbzultWL4u-bw', 'img': 'assets/images/youtube.png'},
     {'title': 'LH블로그', 'url': 'https://blog.naver.com/bloglh', 'img': 'assets/images/naver.png'},
-    {'title': 'Facebook', 'url': 'https://www.facebook.com/withLHofficial', 'img': 'assets/images/Facebook.png'},
-    {'title': '카카오스토리', 'url': 'https://story.kakao.com/ch/storylh/', 'img': 'assets/images/Kakao.png'},
   ];
 
-  // URL 열기 함수
-  Future<void> _launchURL(Uri url) async {
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.inAppWebView);
-    } else {
-      throw 'Could not launch $url';
-    }
-  }
+  // // URL 열기 함수
+  // Future<void> _launchURL(Uri url) async {
+  //   if (await canLaunchUrl(url)) {
+  //     await launchUrl(url, mode: LaunchMode.platformDefault);
+  //   } else {
+  //     throw 'Could not launch $url';
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +56,9 @@ class WebLinkPage extends StatelessWidget {
                     '대외 웹사이트',
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
-                  SizedBox(height: 20),
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.all(16), // 그리드 외부 여백 추가
+                      margin: const EdgeInsets.all(50), // 그리드 외부 여백 추가
                       child: GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3, // 3열 배치
@@ -79,7 +80,17 @@ class WebLinkPage extends StatelessWidget {
                               ),
                               elevation: 4,
                             ),
-                            onPressed: () => _launchURL(Uri.parse(link['url']!)),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => WebPageView(
+                                    title: link['title']!,
+                                    url: link['url']!,
+                                  ),
+                                ),
+                              );
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               child: Column(
@@ -117,3 +128,26 @@ class WebLinkPage extends StatelessWidget {
     );
   }
 }
+
+
+class WebPageView extends StatelessWidget {
+  final String title;
+  final String url;
+
+  const WebPageView({required this.title, required this.url, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+      ),
+      body: WebViewWidget(
+        controller: WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted) // JavaScript 모드 설정
+          ..loadRequest(Uri.parse(url)), // URL 요청
+      ),
+    );
+  }
+}
+

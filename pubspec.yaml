@@ -48,8 +48,9 @@ dependencies:
   flutter_font_picker: ^1.4.0
   awesome_dialog: ^3.2.1
   url_launcher: ^6.1.7
+  webview_flutter: ^4.0.0
 
-dev_dependencies:
+dev_dependencixes:
   flutter_test:
     sdk: flutter
 
