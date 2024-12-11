@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -98,15 +97,23 @@ class _DynamicPageState extends State<DynamicPage> {
     });
   }
   bool isPagesLoaded = false;
+  final FocusNode _focusNode = FocusNode();
   @override
   void initState() {
     super.initState();
     _currentTitle = widget.title;
     _quillController = quill.QuillController.basic();
+
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) {
+        // 포커스를 벗어났을 때 업데이트
+        final newContent = _quillController.document.toPlainText().trim();
+        final newTitle = _titleController.text.trim();
+        _updatePage(newTitle, newContent);
+      }
+    });
+
     _loadPages();
-
-
-
     // QuillController에 리스너 추가 (내용 변경 시 저장)
     _quillController.addListener(() {
       _savePages();
@@ -271,10 +278,10 @@ class _DynamicPageState extends State<DynamicPage> {
     final documentJson = prefs.getString(widget.title);
     if (documentJson != null) {
       final documentDelta = quill.Document.fromJson(jsonDecode(documentJson));
-        _quillController = quill.QuillController(
-          document: documentDelta,
-          selection: const TextSelection.collapsed(offset: 0),
-        );
+      _quillController = quill.QuillController(
+        document: documentDelta,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
     } else {
       setState(() {
         _quillController = quill.QuillController.basic();
@@ -319,10 +326,6 @@ class _DynamicPageState extends State<DynamicPage> {
     final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
     await prefs.setString(newTitle, documentJson);
 
-    // 저장 완료 알림
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('저장되었습니다!')),
-    );
   }
 
 
@@ -360,17 +363,14 @@ class _DynamicPageState extends State<DynamicPage> {
     final pagesJson = jsonEncode(pages);
     await prefs.setString('pages', pagesJson);
     // 콘솔 출력
-    debugPrint("Updated Pages JSON:\n$pagesJson");
     final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
     await prefs.setString(newTitle, documentJson);
 // 변경된 제목을 기준으로 활성화
     setState(() {
       _currentTitle = newTitle; // 현재 활성화된 페이지를 업데이트
-      debugPrint("Current title updated to: '$_currentTitle'");
-      debugPrint("Updated Pages:\n${jsonEncode(pages)}");
     });
 
-      }
+  }
 
 
 
@@ -400,13 +400,12 @@ class _DynamicPageState extends State<DynamicPage> {
     );
 
     if (result == true) {
-      if (newTitle.isNotEmpty || newContent.isNotEmpty) {
+      if (newTitle.isNotEmpty) {
         // 제목과 내용을 함께 업데이트
         _updatePage(newTitle, newContent);
 
         // JSON 변환 후 출력
         final pagesJson = jsonEncode(pages);
-        debugPrint("Final Pages JSON after Save and Exit:\n$pagesJson");
       }
 
       // 홈 화면으로 이동
@@ -457,7 +456,7 @@ class _DynamicPageState extends State<DynamicPage> {
       _deleteWithChildren(widget.title); // 현재 페이지와 모든 자식 페이지 삭제
     });
 
-    // 삭제 후 남은 페이지 데이터를 `SharedPreferences`에 다시 저장
+    // 삭제 후 남은 페이지 데이터를 SharedPreferences에 다시 저장
     await prefs.setString('pages', jsonEncode(pages));
 
     // 부모 콜백 호출
@@ -466,6 +465,7 @@ class _DynamicPageState extends State<DynamicPage> {
     // 홈 화면으로 이동
     Navigator.popUntil(context, (route) => route.isFirst);
   }
+
 
 
   int _getPageDepth(String pageName) {
@@ -525,13 +525,13 @@ class _DynamicPageState extends State<DynamicPage> {
     }
 
     newPageName = 'Page $newNumber';
-// 페이지 생성 전 기존 `parent` 관계 초기화
+// 페이지 생성 전 기존 parent 관계 초기화
     _clearInvalidParents();
     setState(() {
       pages[newPageName] = {'content': '', 'parent': parent};
     });
 
-    // `onAddPage` 콜백 호출
+    // onAddPage 콜백 호출
     widget.onAddPage?.call(newPageName, parent);
 
     _savePages();
@@ -606,13 +606,14 @@ class _DynamicPageState extends State<DynamicPage> {
 
 // 클래스 내부
   Timer? _debounce; // Debounce용 Timer
-
+  Timer? _content_debounce;
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
     _titleFocusNode.dispose();
     _quillController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -926,8 +927,8 @@ class _DynamicPageState extends State<DynamicPage> {
               child: Scaffold(
                 appBar: AppBar(
                   leading: IconButton(
-                    icon: Icon(Icons.arrow_back),
-                    onPressed: _handleSaveAndExit
+                      icon: Icon(Icons.arrow_back),
+                      onPressed: _handleSaveAndExit
                   ),
                   backgroundColor: Colors.grey[200],
 
@@ -977,7 +978,7 @@ class _DynamicPageState extends State<DynamicPage> {
                                 child: quill.QuillEditor(
                                   controller: _quillController,
                                   scrollController: ScrollController(),
-                                  focusNode: FocusNode(),
+                                  focusNode: _focusNode,
                                 ),
                               ),
                             ),
@@ -1025,48 +1026,48 @@ class _DynamicPageState extends State<DynamicPage> {
           final isActive = pageName == _currentTitle;
 
           pageItems.add(
-              GestureDetector(
-            onTap: () => _navigateToPage(pageName), // 전체 클릭 가능
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 0.2), // 각 항목 간 여백
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: isActive ? Colors.white : Colors.blue[50],
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(5),
-                  topRight: Radius.circular(5),
-                  bottomLeft: Radius.circular(0),
-                  bottomRight: Radius.circular(0),
+            GestureDetector(
+              onTap: () => _navigateToPage(pageName), // 전체 클릭 가능
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 0.2), // 각 항목 간 여백
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.white : Colors.blue[50],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(5),
+                    topRight: Radius.circular(5),
+                    bottomLeft: Radius.circular(0),
+                    bottomRight: Radius.circular(0),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 깊이에 따라 '>' 기호 추가
+                    if (depth > 0)
+                      Text(
+                        '▶' * depth + ' ',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
+                      ),
+                    GestureDetector(
+                      onTap: () => _navigateToPage(pageName), // 페이지로 이동
+                      child: Text(
+                        pageName,
+                        style: TextStyle(
+                          color: isActive ? Colors.blue : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis, // 말줄임표 처리
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 깊이에 따라 '>' 기호 추가
-                  if (depth > 0)
-                    Text(
-                      '▶' * depth + ' ',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 10,
-                      ),
-                    ),
-                  GestureDetector(
-                    onTap: () => _navigateToPage(pageName), // 페이지로 이동
-                    child: Text(
-                      pageName,
-                      style: TextStyle(
-                        color: isActive ? Colors.blue : Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      overflow: TextOverflow.ellipsis, // 말줄임표 처리
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ),
           );
 
           // 자식 페이지도 재귀적으로 추가
@@ -1172,4 +1173,3 @@ class _DynamicPageState extends State<DynamicPage> {
     );
   }
 }
-

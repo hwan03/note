@@ -271,12 +271,16 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                _buildLabeledBox(
-                label: '최근 페이지',
-                child: SizedBox(
-                  height: 300, // 고정된 높이 설정
 
-                  child: GridView.builder(
+                  Text('최근 페이지',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF91918E))),
+                  SizedBox(height: 10),
+                  SizedBox(
+                    height: 300, // 고정된 높이 설정
+                    child: GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
                         crossAxisSpacing: 10,
@@ -346,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
-              ),SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Expanded(
                     flex: 3,
                     child: Row(
