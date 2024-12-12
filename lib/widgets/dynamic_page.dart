@@ -300,78 +300,83 @@ class _DynamicPageState extends State<DynamicPage> {
   }
 
 
-  Future<void> _savePages() async {
-    final prefs = await SharedPreferences.getInstance();
+ Future<void> _savePages() async {
+    // 제목이 비어있는 경우 저장하지 않음
+    if (!_titleController.text.isNotEmpty) return;
 
-    // 현재 상태 저장
-    final newTitle = _titleController.text;
+    final prefs = await SharedPreferences.getInstance();
+    final newTitle = _titleController.text.trim();
     final newContent = _quillController.document.toPlainText().trim();
 
-    setState(() {
-      pages[newTitle] = {
-        'content': newContent,
-        'parent': pages[_currentTitle]?['parent'], // 부모 정보 유지
-      };
-      if (newTitle != _currentTitle) {
-        // 제목 변경 처리
-        pages.remove(_currentTitle);
-        _currentTitle = newTitle;
+    // 제목이 변경되었을 때
+    if (newTitle != _currentTitle) {
+      final oldTitle = _currentTitle;
+
+      // 기존 제목 데이터를 새 제목 데이터로 변경
+      if (pages.containsKey(oldTitle)) {
+        pages[newTitle] = pages.remove(oldTitle)!;
       }
-    });
+      _currentTitle = newTitle;
 
-    // 모든 페이지 저장
-    final pagesJson = jsonEncode(pages);
-    await prefs.setString('pages', pagesJson);
+      // 이전 제목 데이터를 SharedPreferences에서 제거
+      await prefs.remove(oldTitle);
+    }
 
-    // 현재 문서 저장
-    final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
-    await prefs.setString(newTitle, documentJson);
-
+    // 새 데이터 저장
+    pages[newTitle]?['content'] = newContent;
+    await prefs.setString('pages', jsonEncode(pages));
+    await prefs.setString(newTitle, jsonEncode(_quillController.document.toDelta().toJson()));
   }
 
 
-  void _updatePage(String newTitle, String newContent) async {
+ Future<void> _updatePage(String newTitle, String newContent) async {
     final prefs = await SharedPreferences.getInstance();
 
-    setState(() {
-      if (newTitle != _currentTitle) {
-        final oldTitle = _currentTitle;
+    if (newTitle.isEmpty) return; // 제목이 비어 있으면 저장하지 않음
 
-        // 기존 데이터 삭제
-        final pageData = pages.remove(oldTitle);
-        prefs.remove(oldTitle);
+    if (newTitle != _currentTitle) {
+      final oldTitle = _currentTitle;
 
-        if (pageData != null) {
-          // 새로운 제목과 내용으로 저장 (가장 최근 방문으로 이동)
-          pages = {
-            newTitle: {
-              'content': newContent,
-              ...pageData,
-              'parent': pageData['parent'],
-            },
-            ...pages,
-          };
-          _currentTitle = newTitle; // 로컬 상태 업데이트
+      // 기존 데이터 업데이트 (맵의 순서를 유지)
+      final updatedPages = <String, Map<String, dynamic>>{};
+      pages.forEach((key, value) {
+        if (key == oldTitle) {
+          // 제목이 변경된 경우 새 키로 추가
+          updatedPages[newTitle] = {...value, 'content': newContent};
+        } else {
+          // 기존 키는 그대로 유지
+          updatedPages[key] = value;
         }
-      } else {
-        // 내용만 업데이트 (순서 유지)
-        pages[newTitle]?['content'] = newContent;
-      }
-    });
-    widget.onUpdate?.call(newTitle, newContent); // 콜백 호출
+      });
+
+      // 페이지 데이터 변경을 UI에 반영
+      await Future(() {
+        setState(() {
+          pages = updatedPages;
+        });
+      });
+
+      _currentTitle = newTitle;
+
+      // SharedPreferences에서 이전 제목 제거
+      await prefs.remove(oldTitle);
+    } else {
+      // 내용만 업데이트
+      await Future(() {
+        setState(() {
+          pages[newTitle]?['content'] = newContent;
+        });
+      });
+    }
 
     // SharedPreferences에 저장
-    final pagesJson = jsonEncode(pages);
-    await prefs.setString('pages', pagesJson);
-    // 콘솔 출력
-    final documentJson = jsonEncode(_quillController.document.toDelta().toJson());
-    await prefs.setString(newTitle, documentJson);
-// 변경된 제목을 기준으로 활성화
-    setState(() {
-      _currentTitle = newTitle; // 현재 활성화된 페이지를 업데이트
-    });
+    await prefs.setString('pages', jsonEncode(pages));
+    await prefs.setString(newTitle, jsonEncode(_quillController.document.toDelta().toJson()));
 
+    // 최종 상태 갱신
+    setState(() {});
   }
+
 
 
 
@@ -379,43 +384,17 @@ class _DynamicPageState extends State<DynamicPage> {
     final newTitle = _titleController.text.trim(); // 제목 가져오기
     final newContent = _quillController.document.toPlainText().trim(); // 내용 가져오기
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('변경 사항 저장'),
-          content: Text('변경 사항을 저장하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true), // 저장
-              child: Text('예'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // 저장하지 않음
-              child: Text('아니요'),
-            ),
-
-          ],
-        );
-      },
-    );
-
-    if (result == true) {
-      if (newTitle.isNotEmpty) {
-        // 제목과 내용을 함께 업데이트
-        _updatePage(newTitle, newContent);
-
-        // JSON 변환 후 출력
-        final pagesJson = jsonEncode(pages);
-      }
-
-      // 홈 화면으로 이동
-      FocusScope.of(context).unfocus(); // 포커스 해제
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await _loadPages();
-        Navigator.popUntil(context, (route) => route.isFirst);
-      });
+    if (newTitle.isNotEmpty) {
+      // 제목과 내용을 함께 업데이트
+      await _updatePage(newTitle, newContent);
     }
+
+    // 홈 화면으로 이동
+    FocusScope.of(context).unfocus(); // 포커스 해제
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadPages();
+      Navigator.popUntil(context, (route) => route.isFirst);
+    });
   }
 
 
@@ -498,7 +477,7 @@ class _DynamicPageState extends State<DynamicPage> {
     });
   }
 
-  void _addPage({String? parent}) {
+   void _addPage({String? parent}) {
     // 부모 페이지의 깊이 확인
     if (parent != null && _getPageDepth(parent) >= 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -506,6 +485,8 @@ class _DynamicPageState extends State<DynamicPage> {
       );
       return;
     }
+
+
 
     String newPageName;
 
@@ -539,71 +520,63 @@ class _DynamicPageState extends State<DynamicPage> {
 
     Navigator.push(
       context,
-
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => DynamicPage(
           title: newPageName,
-          onUpdate: (updatedTitle, updatedContent) {
-            setState(() {
-              if (updatedTitle != newPageName) {
-                pages[updatedTitle] = pages.remove(newPageName)!;
-              }
-              pages[updatedTitle]?['content'] = updatedContent;
-            });
-            _savePages();
-            },
-          onDelete: () {
-            setState(() {
-              pages.remove(newPageName);
-            });
-            _savePages();
+          onUpdate: (updatedTitle, updatedContent) async{
+            if (updatedTitle != newPageName) {
+              pages[updatedTitle] = pages.remove(newPageName)!;
+            }
+            pages[updatedTitle]?['content'] = updatedContent;
+            await _savePages();
+          },
+          onDelete: () async{
+            pages.remove(newPageName);
+            await _savePages();
             Navigator.pop(context);
-            },
+          },
         ),
       ),
     );
   }
 
-  void _navigateToPage(String pageName) async {
+ void _navigateToPage(String pageName) async {
     final prefs = await SharedPreferences.getInstance();
     final currentTitle = _titleController.text.trim();
     final currentContent = _quillController.document.toPlainText().trim();
 
     // 현재 페이지 상태 저장
-    _updatePage(currentTitle, currentContent);
+    await _updatePage(currentTitle, currentContent);
 
     Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => DynamicPage(
           title: pageName,
-          onUpdate: (updatedTitle, updatedContent) {
-            setState(() {
-              if (updatedTitle != pageName) {
-                final pageData = pages.remove(pageName);
-                if (pageData != null) {
-                  pageData['content'] = updatedContent;
-                  pages = {updatedTitle: pageData, ...pages};
-                }
-              } else {
-                pages[pageName]?['content'] = updatedContent;
+          onUpdate: (updatedTitle, updatedContent) async {
+            if (updatedTitle != pageName) {
+              final pageData = pages.remove(pageName);
+              if (pageData != null) {
+                pageData['content'] = updatedContent;
+                pages = {updatedTitle: pageData, ...pages};
               }
-            });
-            _savePages();
+            } else {
+              pages[pageName]?['content'] = updatedContent;
+            }
+            await _savePages();
           },
-          onDelete: () {
-            setState(() {
-              pages.remove(pageName);
-            });
-            _savePages();
+          onDelete: () async {
+            pages.remove(pageName);
+            await _savePages();
             Navigator.pop(context);
           },
         ),
       ),
-    ).then((_) {
+    ).then((_) async{
       _loadPages(); // 상태 재동기화
     });
   }
+
 
 
 // 클래스 내부
@@ -1015,7 +988,7 @@ class _DynamicPageState extends State<DynamicPage> {
     );
   }
 
-  Widget buildRecentPagesBar() {
+ Widget buildRecentPagesBar() {
     final ScrollController _scrollController = ScrollController();
 
     // 부모-자식 관계를 반영해 페이지를 계층적으로 정렬
@@ -1029,7 +1002,12 @@ class _DynamicPageState extends State<DynamicPage> {
 
           pageItems.add(
             GestureDetector(
-              onTap: () => _navigateToPage(pageName), // 전체 클릭 가능
+              onTap: () {
+                if (!isActive) {
+                  // 현재 페이지가 아닌 경우에만 네비게이트
+                  _navigateToPage(pageName);
+                }
+              }, // 전체 클릭 가능
               child: Container(
                 margin: EdgeInsets.symmetric(horizontal: 0.2), // 각 항목 간 여백
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1055,7 +1033,12 @@ class _DynamicPageState extends State<DynamicPage> {
                         ),
                       ),
                     GestureDetector(
-                      onTap: () => _navigateToPage(pageName), // 페이지로 이동
+                      onTap: () {
+                        if (!isActive) {
+                          // 현재 페이지가 아닌 경우에만 네비게이트
+                          _navigateToPage(pageName);
+                        }
+                      },  // 페이지로 이동
                       child: Text(
                         pageName,
                         style: TextStyle(
