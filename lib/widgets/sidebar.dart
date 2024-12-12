@@ -4,6 +4,7 @@ import '../main.dart';
 import '../to_do.dart';
 import '../search.dart';
 import '../web_link.dart';
+import '../widgets/dynamic_page.dart';
 
 class Sidebar extends StatefulWidget {
   final Map<String, Map<String, dynamic>> pages; // 페이지 목록
